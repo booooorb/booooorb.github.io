@@ -2,86 +2,28 @@
 <html lang="en">
 <head>
   <meta charset="utf-8" />
-  <title>Brainwave Runner</title>
+  <title>booooorb</title>
   <meta name="viewport" content="width=device-width, initial-scale=1" />
-
-  <!-- font -->
-  <link rel="preconnect" href="https://fonts.googleapis.com">
-  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;800&display=swap" rel="stylesheet">
-
   <link rel="stylesheet" href="style.css" />
 </head>
 <body>
-  <div class="page">
-    <header class="header">
-      <div class="logo">🧠 Brainwave Runner</div>
-      <nav class="nav">
-        <a href="#about">About</a>
-        <a href="#how-it-works">How it works</a>
-        <a href="https://github.com/your-username/your-repo" target="_blank" rel="noopener">
-          GitHub
-        </a>
-      </nav>
+  <div class="site">
+    <header class="site-header">
+      <div class="logo">booooorb</div>
     </header>
 
-    <main class="hero">
-      <!-- left side -->
-      <section class="hero-text">
-        <h1>Turn sleep brainwaves into a game.</h1>
-        <p class="hero-subtitle">
-          This experiment turns real EEG data into a 2D obstacle course.
-          The level you see is generated from one night of sleep:
-          delta, theta, alpha and beta waves shape the terrain.
-        </p>
+    <main class="games-grid">
+      <a class="game-card" href="brain-surfing/">
+        <div class="game-title">Brainwave Surfing</div>
+        <div class="game-subtitle">EEG → obstacle course</div>
+      </a>
 
-        <button class="primary-button" id="start-button">
-          ▶ Play / Restart
-        </button>
-
-        <p class="hint">
-          Use <b>← →</b> to move and <b>space</b> to jump.<br />
-          (Right now this is a placeholder demo – the EEG level generation comes next.)
-        </p>
-      </section>
-
-      <!-- right side -->
-      <section class="hero-canvas">
-        <div class="canvas-frame">
-          <canvas id="game-canvas" width="800" height="450"></canvas>
-        </div>
-        <div class="canvas-caption">
-          Live preview of the level. On GitHub Pages, this runs entirely in your browser.
-        </div>
-      </section>
+      <a class="game-card" href="spike-playground/">
+        <div class="game-title">Stroop Brain Rot</div>
+        <div class="game-subtitle">Stroop typing test -> balls</div>
+      </a>
+      <!-- add more games here later -->
     </main>
-
-    <section class="info" id="about">
-      <h2>What is this?</h2>
-      <p>
-        Brainwave Runner is an interactive visualization where a simple game level
-        is generated from polysomnography (PSG) recordings. Each second of EEG
-        becomes one column of terrain in the obstacle course.
-      </p>
-    </section>
-
-    <section class="info" id="how-it-works">
-      <h2>How it works (high level)</h2>
-      <ol>
-        <li>Take an EEG channel like <code>EEG Fpz-Cz</code> from a Sleep-EDF PSG file.</li>
-        <li>Split it into short windows and compute band power: delta, theta, alpha, beta.</li>
-        <li>Normalize those values and map them into ground height, gaps, and obstacles.</li>
-        <li>Draw that as a scrolling 2D level in the canvas above.</li>
-      </ol>
-    </section>
-
-    <footer class="footer">
-      <span>Made by <a href="https://github.com/your-username" target="_blank" rel="noopener">your-username</a></span>
-      <span class="dot">•</span>
-      <span>Hosted on GitHub Pages</span>
-    </footer>
   </div>
-
-  <script src="script.js" defer></script>
 </body>
 </html>

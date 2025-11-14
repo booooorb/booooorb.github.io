@@ -1,0 +1,66 @@
+:root {
+  --bg: #EAE7D9;
+  --panel: #EAE7D9;
+  --fg: #442727;
+  --muted: #6C5A4A;
+}
+
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
+}
+
+html,
+body {
+  margin: 0;
+  padding: 0;
+  height: 100%;
+  font-family: "Courier New", ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas,
+    "Liberation Mono", "Courier", monospace;
+  background: var(--bg);
+  color: var(--fg);
+}
+
+body {
+  display: block;
+}
+
+.wrapper {
+  width: 100%;
+  padding: 12px 0 0;
+}
+
+.top-bar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0 16px 8px;
+  font-size: 0.9rem;
+}
+
+.back-link {
+  color: var(--muted);
+  text-decoration: none;
+}
+
+.back-link:hover {
+  color: var(--fg);
+}
+
+.title {
+  font-weight: 700;
+}
+
+
+.game-area {
+  width: 100%;
+  margin: 32px 0 0; 
+}
+
+#game-canvas {
+  display: block;
+  width: 100%;
+  height: calc(100vh - 120px);  
+  background: var(--panel);
+}
