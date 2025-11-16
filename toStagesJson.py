@@ -1,10 +1,8 @@
 import mne
 import json
 
-# === EDIT THIS: your hypnogram EDF filename ===
 EDF_FILE = "SC4001EC-Hypnogram.edf"
 
-# This is the right way to get all sleep stage epochs from a hypnogram EDF:
 ann = mne.read_annotations(EDF_FILE)
 
 print("Number of annotations in hypnogram:", len(ann))
@@ -18,7 +16,6 @@ STAGE_MAP = {
     "Sleep stage 3": "N3",
     "Sleep stage 4": "N4",
     "Sleep stage R": "REM",
-    # you can ignore these (or map them if you want):
     "Sleep stage ?": None,
     "Movement time": None,
 }
@@ -28,7 +25,6 @@ for onset, dur, descr in zip(ann.onset, ann.duration, ann.description):
     code = STAGE_MAP.get(descr, None)
     if code is None:
         continue
-    # onset is "seconds from recording start"
     segments.append({"t": float(onset), "stage": code})
 
 # Sort by time
@@ -38,7 +34,7 @@ if not segments:
     raise RuntimeError("No sleep stage annotations matched STAGE_MAP. "
                        "Check the printed 'Unique labels' above.")
 
-# Total duration: last onset + its duration
+# Total duration
 total_duration = float(ann.onset[-1] + ann.duration[-1])
 
 out = {
