@@ -1,11 +1,13 @@
 <!doctype html>
 <html lang="en">
+
 <head>
   <meta charset="utf-8" />
   <title>Brain Surfing</title>
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <link rel="stylesheet" href="game.css" />
 </head>
+
 <body>
   <div class="wrapper">
     <header class="top-bar">
@@ -14,10 +16,36 @@
     </header>
 
     <main class="game-area">
-      <canvas id="game-canvas" width="900" height="700"></canvas>
+      <canvas id="game-canvas" width="900" height="1280"></canvas>
+
+      <div class="hud hud-top-left" id="dataset-controls">
+        <div class="hud-title">Dataset</div>
+        <div class="dataset-buttons">
+          <button type="button" data-dataset="sleep">Sleep</button>
+          <button type="button" data-dataset="seizure">Seizure</button>
+
+          <label class="upload-label">
+            <span>Upload JSON</span>
+            <input type="file" id="eeg-upload-input" accept=".json" style="display: none;" />
+          </label>
+        </div>
+      </div>
+
+      <div class="hud hud-top-right">
+        <div id="eeg-status">EEG: loading…</div>
+
+        <button id="info-toggle" type="button">
+          EEG info ▾
+        </button>
+
+        <div id="eeg-info">
+          
+        </div>
+      </div>
     </main>
   </div>
 
   <script src="game.js"></script>
 </body>
+
 </html>

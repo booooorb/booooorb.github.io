@@ -2,9 +2,9 @@ import mne
 import numpy as np
 import json
 
-EDF_FILE = "SC4001E0-PSG.edf"
+EDF_FILE = "PN12-3.edf"
 
-CHANNEL_INDEX = 0  # 0 = first channel
+CHANNEL_INDEX = 14  # 0 = first channel
 
 raw = mne.io.read_raw_edf(EDF_FILE, preload=True)
 

@@ -2,6 +2,8 @@
     const canvas = document.getElementById("game-canvas");
     if (!canvas) return;
     const ctx = canvas.getContext("2d");
+    const datasetControlsEl = document.getElementById("dataset-controls");
+    const uploadInput = document.getElementById("eeg-upload-input");
 
     const PLAYER_SIZE = 64;
     const GRAVITY = 1800;        // px/s^2
@@ -9,14 +11,14 @@
     const GROUND_MARGIN = 10;    // distance from bottom to baseline
     const TOP_MARGIN = 20;       // min distance from top for the wave
 
-    const EEG_SCROLL_SPEED = 5.0;        
+    const EEG_SCROLL_SPEED = 5.0;
     const SMOOTH_WINDOW = 25;            // moving-average half-window (25 -> 51 samples)
-    const HORIZONTAL_SAMPLE_STEP = 0.3; 
-    const AMP_SCALE = 1.5;               
+    const HORIZONTAL_SAMPLE_STEP = 0.3;
+    const AMP_SCALE = 1.5;
 
     const playerImg = new Image();
     let playerImgLoaded = false;
-    playerImg.src = "character2.png";   
+    playerImg.src = "character2.png";
 
     playerImg.onload = () => {
         playerImgLoaded = true;
@@ -27,65 +29,72 @@
 
     const MAX_AIR_TILT = Math.PI / 6; // max extra tilt in air (30°)
     const AIR_TILT_SPEED = 4.0;
+    const SLOW_TILT_SPEED = 1.5;
 
-    const COYOTE_TIME = 0.7; // seconds after leaving ground you can still jump
+    const COYOTE_TIME = 0.4; // seconds after leaving ground you can still jump
     let coyoteTimer = 0;
     let canCoyoteJump = false;
 
     let isGameOver = false;
 
-    const STAGE_LABELS = {
-        W: "Wake",
-        N1: "N1 – light sleep",
-        N2: "N2 – light sleep",
-        N3: "N3 – deep sleep",
-        N4: "N4 – deep sleep",
-        REM: "REM sleep",
-        R: "REM sleep",
+    // DATASET DEFINITIONS
+    const STAGE_LABELS_BY_DATASET = {
+        // Sleep staging 
+        sleep: {
+            W: "Wake",
+            N1: "N1 – light sleep",
+            N2: "N2 – light sleep",
+            N3: "N3 – deep sleep",
+            N4: "N4 – deep sleep",
+            REM: "REM sleep",
+            R: "REM sleep",
+        },
+
+        // Seizure Staging
+        seizure: {
+            SZ: "Seizure",
+            NS: "No seizure",
+        },
+
+        // User-upload EEG
+        user: null,
     };
 
-    // EEG status
-    const statusEl = document.createElement("div");
-    statusEl.textContent = "EEG: loading…";
-    Object.assign(statusEl.style, {
-        position: "fixed",
-        bottom: "138px",
-        left: "8px",
-        padding: "4px 8px",
-        background: "rgba(0,0,0,0.6)",
-        color: "#f4f4f4",
-        fontFamily: "Courier New, monospace",
-        fontSize: "12px",
-        borderRadius: "4px",
-        zIndex: "9999",
-    });
-    document.body.appendChild(statusEl);
+    const DATASETS = {
+        sleep: {
+            label: "Sleep (demo)",
+            eegUrl: "brainwave_runner_sleep.json",
+            stagesUrl: "brainwave_stages_sleep.json",
+            hasStages: true,
+        },
+        seizure: {
+            label: "Seizure (demo)",
+            eegUrl: "brainwave_runner_seizure.json",
+            stagesUrl: "brainwave_stages_seizure.json",
+            hasStages: true,
+        },
+        user: {
+            label: "User upload",
+            eegUrl: null,   // loaded from <input type="file">
+            stagesUrl: null,
+            hasStages: false,
+        },
+    };
 
-    // Scaling info
-    const infoEl = document.createElement("div");
-    Object.assign(infoEl.style, {
-        position: "fixed",
-        bottom: "8px",
-        left: "8px",
-        maxWidth: "360px",
-        padding: "6px 8px",
-        background: "rgba(0,0,0,0.55)",
-        color: "#f4f4f4",
-        fontFamily: "Courier New, monospace",
-        fontSize: "11px",
-        borderRadius: "4px",
-        lineHeight: "1.3",
-        zIndex: "9999",
-    });
-    infoEl.innerHTML = [
-        "EEG processing:",
-        "- values normalized to [-1, 1]",
-        `- smoothing: ${(SMOOTH_WINDOW * 2 + 1)}-sample moving avg`,
-        `- amplitude scale: ×${AMP_SCALE}, clipped`,
-        `- horizontal stretch: ${HORIZONTAL_SAMPLE_STEP} samples/px`,
-        `- scroll speed: ${EEG_SCROLL_SPEED}× real time`,
-    ].join("<br>");
-    document.body.appendChild(infoEl);
+    let currentDatasetKey = "sleep";
+
+
+    const statusEl = document.getElementById("eeg-status");
+    const infoEl = document.getElementById("eeg-info");
+
+    const infoToggle = document.getElementById("info-toggle");
+    if (infoToggle && infoEl) {
+        infoToggle.addEventListener("click", () => {
+            const collapsed = infoEl.classList.toggle("collapsed");
+            infoToggle.textContent = collapsed ? "EEG info ▸" : "EEG info ▾";
+        });
+    }
+
 
     // World state
     let groundY;
@@ -109,7 +118,7 @@
     let sleepIndex = 0;
     let currentStageCode = null;
 
-    let particles = []; 
+    let particles = [];
 
     // UTILS
     function formatClock(tSec) {
@@ -124,104 +133,157 @@
     }
 
     function stagePretty(code) {
-        if (!code) return "Unknown";
-        return STAGE_LABELS[code] || code;
+        const conf = DATASETS[currentDatasetKey];
+
+        if (!conf || !conf.hasStages || !code) {
+            return "No stage data";
+        }
+
+        const labels = STAGE_LABELS_BY_DATASET[currentDatasetKey];
+
+        if (!labels) return code;
+
+        return labels[code] || code;
     }
 
-    // LOAD EEG DATA
-    fetch("brainwave_runner_data.json")
-        .then((res) => {
-            if (!res.ok) throw new Error("HTTP " + res.status);
-            return res.json();
-        })
-        .then((data) => {
-            eegSampleRate = data.sampleRate || 50;
-            const raw = Array.isArray(data.values) ? data.values : [];
 
-            if (!raw.length) throw new Error("JSON has empty values array");
+    function initEEGFromJson(data) {
+        eegSampleRate = data.sampleRate || 50;
+        const raw = Array.isArray(data.values) ? data.values : [];
 
-            // Normalize to [-1, 1]
-            let maxAbs = 0;
-            for (let i = 0; i < raw.length; i++) {
-                const v = Math.abs(raw[i]);
-                if (v > maxAbs) maxAbs = v;
-            }
-            if (maxAbs === 0) throw new Error("All EEG samples are zero");
+        if (!raw.length) throw new Error("JSON has empty values array");
 
-            eegValues = raw.map((v) => v / maxAbs);
-            eegLength = eegValues.length;
-            eegReady = true;
+        // Normalize to [-1, 1]
+        let maxAbs = 0;
+        for (let i = 0; i < raw.length; i++) {
+            const v = Math.abs(raw[i]);
+            if (v > maxAbs) maxAbs = v;
+        }
+        if (maxAbs === 0) throw new Error("All EEG samples are zero");
 
-            statusEl.textContent =
-                "EEG: wave loaded (" + eegLength + " samples @ " + eegSampleRate + " Hz)";
-            statusEl.style.background = "rgba(0,128,0,0.7)";
+        eegValues = raw.map((v) => v / maxAbs);
+        eegLength = eegValues.length;
+        eegReady = true;
 
-            const smoothSamples = SMOOTH_WINDOW * 2 + 1;
-            const smoothSec = (smoothSamples / eegSampleRate).toFixed(2);
-            infoEl.innerHTML = [
-                "EEG processing:",
-                "- EEG Fpz-Cz channel from EDF, normalized to [-1, 1]",
-                `- smoothing: ${smoothSamples}-sample moving avg (~${smoothSec}s @ ${eegSampleRate}Hz)`,
-                "- (does not represent spindles, sharp K-complex shapes, or fast activity)",
-                `- amplitude scale: ×${AMP_SCALE}, clipped to fit canvas`,
-                `- horizontal stretch: ${HORIZONTAL_SAMPLE_STEP} samples/px`,
-                `- scroll speed: ${EEG_SCROLL_SPEED}× real time`,
-            ].join("<br>");
+        statusEl.textContent =
+            "EEG: wave loaded (" + eegLength + " samples @ " + eegSampleRate + " Hz)";
+        statusEl.style.background = "rgba(0,128,0,0.7)";
 
-            console.log("EEG data loaded:", eegLength, "samples at", eegSampleRate, "Hz");
-        })
-        .catch((err) => {
-            console.error("Failed to load/normalize EEG data:", err);
-            statusEl.textContent = "EEG: FAILED, using fake sine wave";
-            statusEl.style.background = "rgba(128,0,0,0.7)";
-            eegReady = false;
-        });
+        const smoothSamples = SMOOTH_WINDOW * 2 + 1;
+        const smoothSec = (smoothSamples / eegSampleRate).toFixed(2);
+        infoEl.innerHTML = [
+            "EEG processing:",
+            "- EEG Fpz-Cz channel, normalized to [-1, 1]",
+            `- One sample is taken every ${smoothSamples} data points for smoothing (one sample every ~${smoothSec}s at ${eegSampleRate}Hz)`,
+            " (does not accurately represent fast activity such as spindles or sharp K-complexes)",
+            `- amplitude scale: ×${AMP_SCALE}, clipped to fit canvas`,
+            `- horizontal stretch: ${HORIZONTAL_SAMPLE_STEP} samples/px`,
+            `- scroll speed: ${EEG_SCROLL_SPEED}× real time`,
+        ].join("<br>");
+
+        console.log("EEG data loaded:", eegLength, "samples at", eegSampleRate, "Hz");
+    }
+
+    function loadEEGFromUrl(url) {
+        statusEl.textContent = "EEG: loading…";
+        statusEl.style.background = "rgba(0,0,0,0.6)";
+        eegReady = false;
+
+        fetch(url)
+            .then((res) => {
+                if (!res.ok) throw new Error("HTTP " + res.status);
+                return res.json();
+            })
+            .then((data) => {
+                initEEGFromJson(data);
+            })
+            .catch((err) => {
+                console.error("Failed to load/normalize EEG data:", err);
+                statusEl.textContent = "EEG: FAILED, using fake sine wave";
+                statusEl.style.background = "rgba(128,0,0,0.7)";
+                eegReady = false;
+            });
+    }
 
     // LOAD SLEEP STAGES
-    fetch("brainwave_stages.json")
-        .then((res) => {
-            if (!res.ok) throw new Error("HTTP " + res.status);
-            return res.json();
-        })
-        .then((data) => {
-            const segs = Array.isArray(data.segments) ? data.segments : [];
-            if (!segs.length) throw new Error("No segments in stages JSON");
+    function initStagesFromJson(data) {
+        const segs = Array.isArray(data.segments) ? data.segments : [];
+        if (!segs.length) {
+            console.warn("No segments in stages JSON");
+            sleepSegments = [];
+            currentStageCode = null;
+            return;
+        }
 
-            sleepSegments = segs
-                .filter((s) => typeof s.t === "number" && typeof s.stage === "string")
-                .sort((a, b) => a.t - b.t);
+        sleepSegments = segs
+            .filter((s) => typeof s.t === "number" && typeof s.stage === "string")
+            .sort((a, b) => a.t - b.t);
 
-            sleepIndex = 0;
-            currentStageCode = sleepSegments[0].stage;
+        sleepIndex = 0;
+        currentStageCode = sleepSegments[0].stage;
 
-            console.log("Loaded", sleepSegments.length, "sleep stage segments.");
+        console.log("Loaded", sleepSegments.length, "sleep stage segments.");
 
-            // Choose starting point
-            const firstN1 = sleepSegments.find((s) => s.stage === "N1");
-            const firstNonW = sleepSegments.find((s) => s.stage !== "W");
+        // Choose starting point: first N1, or first non-W, or 0
+        const firstN1 = sleepSegments.find((s) => s.stage === "N1");
+        const firstNonW = sleepSegments.find((s) => s.stage !== "W");
 
-            if (firstN1) {
-                EEG_START_OFFSET_SEC = firstN1.t;
-            } else if (firstNonW) {
-                EEG_START_OFFSET_SEC = firstNonW.t;
-            } else {
-                EEG_START_OFFSET_SEC = 0;
-            }
+        if (firstN1) {
+            EEG_START_OFFSET_SEC = firstN1.t;
+        } else if (firstNonW) {
+            EEG_START_OFFSET_SEC = firstNonW.t;
+        } else {
+            EEG_START_OFFSET_SEC = 0;
+        }
 
-            console.log("EEG_START_OFFSET_SEC set to", EEG_START_OFFSET_SEC, "seconds");
+        if (currentDatasetKey == "seizure") {
+            EEG_START_OFFSET_SEC = 300;
+        }
 
-            sleepIndex = 0;
-            updateSleepStageForTime(EEG_START_OFFSET_SEC);
-            lastEffectiveTime = EEG_START_OFFSET_SEC;
-        })
-        .catch((err) => {
-            console.warn("Failed to load sleep stages JSON:", err);
-        });
+        console.log("EEG_START_OFFSET_SEC set to", EEG_START_OFFSET_SEC, "seconds");
 
-    function initCanvasSizeOnce() {
+        sleepIndex = 0;
+        updateSleepStageForTime(EEG_START_OFFSET_SEC);
+        lastEffectiveTime = EEG_START_OFFSET_SEC;
+    }
+
+    function loadStagesFromUrl(url) {
+        fetch(url)
+            .then((res) => {
+                if (!res.ok) throw new Error("HTTP " + res.status);
+                return res.json();
+            })
+            .then((data) => {
+                initStagesFromJson(data);
+            })
+            .catch((err) => {
+                console.warn("Failed to load sleep stages JSON:", err);
+                sleepSegments = [];
+                currentStageCode = null;
+            });
+    }
+
+    function loadDataset() {
+        const conf = DATASETS[currentDatasetKey];
+        if (!conf) return;
+
+        console.log("Loading dataset:", currentDatasetKey, conf.label);
+
+        if (conf.eegUrl) {
+            loadEEGFromUrl(conf.eegUrl);
+        }
+
+        if (conf.hasStages && conf.stagesUrl) {
+            loadStagesFromUrl(conf.stagesUrl);
+        } else {
+            sleepSegments = [];
+            currentStageCode = null;
+        }
+    }
+
+    function resizeCanvas() {
         const rect = canvas.getBoundingClientRect();
         canvas.width = rect.width;
-        canvas.height = rect.height;
         groundY = canvas.height - GROUND_MARGIN;
     }
 
@@ -230,15 +292,15 @@
             x: canvas.width / 2 - PLAYER_SIZE / 2,
             y: groundY - PLAYER_SIZE,
             vy: 0,
-            onGround: true,
-            angle: 0,        
-            airBaseAngle: 0,  
+            onGround: false,
+            angle: 0,
+            airBaseAngle: 0,
         };
     }
 
     function resetGame() {
         createPlayer();
-        eegTime = 0;   
+        eegTime = 0;
         sleepIndex = 0;
         score = 0;
     }
@@ -365,12 +427,12 @@
                 const targetAngle = Math.atan2(dy, dx);
 
                 if (Number.isFinite(targetAngle)) {
-                    const blend = 0.25; 
+                    const blend = 0.25;
                     const current = player.angle || 0;
                     const newAngle = current + (targetAngle - current) * blend;
 
                     player.angle = newAngle;
-                    player.airBaseAngle = newAngle; 
+                    player.airBaseAngle = newAngle;
                 }
             }
         }
@@ -393,7 +455,7 @@
                 particles.push({
                     x: player.x + PLAYER_SIZE * 0.25 + (Math.random() * 4 - 2),
                     y: player.y + PLAYER_SIZE - 2 + (Math.random() * 4 - 2),
-                    
+
                     vx: - (120 + Math.random() * 80),  // 120–200 px/s left
                     vy: - (40 + Math.random() * 40),   // -40 to -80 px/s
 
@@ -417,7 +479,7 @@
             }
         }
 
-        // Clamp at very bottom of canvas as a safety net
+        /* Clamp at very bottom of canvas as a safety net
         const baseline = groundY - PLAYER_SIZE;
         if (player.y > baseline) {
             player.y = baseline;
@@ -425,20 +487,19 @@
             player.onGround = true;
         }
 
-        // Top clamp
-        const topClamp = -100;
+        const topClamp = canvas.height * 0.05; // 5% from the top
         if (player.y < topClamp) {
             player.y = topClamp;
             if (player.vy < 0) player.vy = 0;
-        }
+        }*/
 
         // Air tilt
         if (!player.onGround) {
             const targetOffset = (player.vy < 0) ? -MAX_AIR_TILT : MAX_AIR_TILT;
             const currentOffset = player.angle - player.airBaseAngle;
-            const newOffset =
-                currentOffset + (targetOffset - currentOffset) * AIR_TILT_SPEED * dt;
-
+            const newOffset = (player.angle < Math.PI / 12) ?
+                currentOffset + (targetOffset - currentOffset) * AIR_TILT_SPEED * dt :
+                currentOffset + (targetOffset - currentOffset) * SLOW_TILT_SPEED * dt;
             player.angle = player.airBaseAngle + newOffset;
         }
 
@@ -506,7 +567,12 @@
 
 
         // HUD
-        const stageText = "Stage: " + stagePretty(currentStageCode);
+        const conf = DATASETS[currentDatasetKey];
+        let stageText = "";
+
+        if (conf && conf.hasStages) {
+            stageText = "Stage: " + stagePretty(currentStageCode);
+        }
         const timeText = "EDF time: " + formatClock(lastEffectiveTime);
 
         ctx.save();
@@ -515,10 +581,10 @@
 
         ctx.font = "20px 'Courier New', monospace";
         ctx.fillStyle = "#000000";
-        ctx.fillText(stageText, w / 2, groundY - 550);
+        ctx.fillText(stageText, w / 2, h * 0.39 + 50);
 
         ctx.font = "16px 'Courier New', monospace";
-        ctx.fillText(timeText, w / 2, groundY - 550 + 20);
+        ctx.fillText(timeText, w / 2, h * 0.39 + 50 + 20);
         ctx.restore();
 
         // BIG CENTER SCORE
@@ -530,7 +596,7 @@
         ctx.font = "bold 96px 'Trebuchet MS', 'Segoe UI', system-ui, sans-serif";
         ctx.fillStyle = "#000000";
         const scoreX = w / 2;
-        const scoreY = groundY - 660;
+        const scoreY = h * 0.39;
         ctx.fillText(scoreText, scoreX, scoreY);
         ctx.restore();
 
@@ -561,7 +627,7 @@
         player.onGround = false;
         player.vy = JUMP_VELOCITY;
 
-        const JUMP_TILT = -0.08; 
+        const JUMP_TILT = -0.02;
         player.airBaseAngle = player.angle + JUMP_TILT;
         player.angle = player.airBaseAngle;
 
@@ -592,9 +658,62 @@
         jump();
     });
 
-    // Init
-    initCanvasSizeOnce();
+    if (datasetControlsEl) {
+        datasetControlsEl.addEventListener("click", (e) => {
+            const btn = e.target.closest("button[data-dataset]");
+            if (!btn) return;
+
+            const key = btn.getAttribute("data-dataset");
+            if (!DATASETS || !DATASETS[key]) return;
+
+            currentDatasetKey = key;
+            loadDataset();
+        });
+    }
+
+    // file input for user JSON
+    if (uploadInput) {
+        uploadInput.addEventListener("change", (e) => {
+            const file = e.target.files[0];
+            if (!file) return;
+
+            const reader = new FileReader();
+            reader.onload = (ev) => {
+                try {
+                    const json = JSON.parse(ev.target.result);
+
+                    currentDatasetKey = "user";
+                    initEEGFromJson(json);
+
+                    // No stages for user upload (for now)
+                    sleepSegments = [];
+                    currentStageCode = null;
+                    EEG_START_OFFSET_SEC = 0;
+                    lastEffectiveTime = 0;
+
+                    statusEl.textContent = "EEG: user upload loaded";
+                    statusEl.style.background = "rgba(0,128,0,0.7)";
+                } catch (err) {
+                    console.error("Failed to parse uploaded JSON:", err);
+                    statusEl.textContent = "EEG: upload parse error";
+                    statusEl.style.background = "rgba(128,0,0,0.7)";
+                }
+            };
+            reader.readAsText(file);
+        });
+    }
+
+    resizeCanvas();
     createPlayer();
+
+    window.addEventListener("resize", () => {
+        resizeCanvas();
+        createPlayer();
+    });
+
+    // Load default dataset (sleep demo)
+    loadDataset();
+
     requestAnimationFrame((t) => {
         lastTime = t;
         loop(t);
