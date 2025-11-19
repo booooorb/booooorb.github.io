@@ -6,8 +6,8 @@
     const uploadInput = document.getElementById("eeg-upload-input");
 
     const PLAYER_SIZE = 64;
-    const GRAVITY = 1800;        // px/s^2
-    const JUMP_VELOCITY = -800;  // px/s
+    const GRAVITY = 1600;        // px/s^2
+    const JUMP_VELOCITY = -640;  // px/s
     const GROUND_MARGIN = 10;    // distance from bottom to baseline
     const TOP_MARGIN = 20;       // min distance from top for the wave
 
@@ -30,6 +30,7 @@
     const MAX_AIR_TILT = Math.PI / 6; // max extra tilt in air (30°)
     const AIR_TILT_SPEED = 4.0;
     const SLOW_TILT_SPEED = 1.5;
+    const GLIDE_TILT_SPEED = 0.5;
 
     const COYOTE_TIME = 0.4; // seconds after leaving ground you can still jump
     let coyoteTimer = 0;
@@ -100,10 +101,18 @@
     let groundY;
     let player;
     let lastTime = performance.now();
+    let worldTime = 0;
+
     let score = 0;
     const SCORE_SPEED = 30;
 
     let terrainProfile = [];
+
+    const TERRAIN_LAUNCH_WINDOW = 0.2; // seconds to look back
+    const TERRAIN_LAUNCH_MIN_RISE = 45; // pixels "up" needed to trigger 
+    let launchBaselineY = null;
+    let launchBaselineTime = 0;
+    let wasOnGround = false;
 
     // EEG data
     let eegReady = false;
@@ -119,6 +128,33 @@
     let currentStageCode = null;
 
     let particles = [];
+
+    // --- TRICK CONSTANTS ---
+    const FLIP_DURATION = 0.35;          // seconds, single tap
+    const GLIDE_GRAVITY = 200;          // slower fall during glide
+    const TRICK_FAIL_PENALTY = 1500;
+    const DOUBLE_TAP_WINDOW = 220;      // ms
+    const HOLD_THRESHOLD = 220;         // ms before press counts as hold
+
+    // Air trick state
+    let currentTrick = null;        // 'flip' | 'glide' | null
+    let trickTimer = 0;
+    let trickDuration = 0;
+    let trickLocked = false;        // true after any trick until landing
+    let flipAnimTimeLeft = 0;       // >0 → play flip animation
+
+
+    // Tap / hold detection for tricks
+    let tapPending = false;
+    let tapTimeoutId = null;
+    let lastTapTimeMs = 0;
+    let primaryDown = false;
+    let pressInAir = false;
+    let holdTimerId = null;
+    let glideActive = false;
+
+    const FLOAT_TEXT_LIFETIME = 0.7; // seconds
+    let floatingTexts = [];          // {x, y, vy, life, maxLife, text, color}
 
     // UTILS
     function formatClock(tSec) {
@@ -144,6 +180,136 @@
         if (!labels) return code;
 
         return labels[code] || code;
+    }
+
+    // images for tricks
+    const flipBoardImg = new Image();
+    let flipBoardLoaded = false;
+    flipBoardImg.src = "flip1_p.png"; 
+    flipBoardImg.onload = () => {
+        flipBoardLoaded = true;
+        console.log("Flip board image loaded");
+    };
+
+    const flipPenguinImg = new Image();
+    let flipPenguinLoaded = false;
+    flipPenguinImg.src = "flip1_b.png"; 
+    flipPenguinImg.onload = () => {
+        flipPenguinLoaded = true;
+        console.log("Flip penguin image loaded");
+    };
+
+    const glidePenguinImg = new Image();
+    let glidePenguinLoaded = false;
+    glidePenguinImg.src = "glide_p.png"; 
+    glidePenguinImg.onload = () => {
+        glidePenguinLoaded = true;
+        console.log("Glide penguin image loaded");
+    };
+
+    function startFlipTrick() {
+        if (trickLocked || currentTrick) return;
+        currentTrick = "flip";
+        trickTimer = 0;
+        trickDuration = FLIP_DURATION;
+        trickLocked = true;
+        score += 1000;
+        flipAnimTimeLeft = FLIP_DURATION * 2 / 3;
+
+        const cx = player.x + PLAYER_SIZE / 2;
+        const cy = player.y + PLAYER_SIZE / 2 - PLAYER_SIZE * 0.35;
+
+        const radius = PLAYER_SIZE * 0.3;    
+        const theta = Math.random() * Math.PI * 2;
+        const r = radius * Math.random();
+
+        const worldX = cx + r * Math.cos(theta);
+        const worldY = cy + r * Math.sin(theta);
+
+        floatingTexts.push({
+            x: worldX,
+            y: worldY,
+            vy: -60,                   // pixels/sec upward
+            life: FLOAT_TEXT_LIFETIME,
+            maxLife: FLOAT_TEXT_LIFETIME,
+            text: "+1000",
+        });
+    }
+
+
+
+    function startGlideTrick() {
+        if (trickLocked || currentTrick || !player || player.onGround) return;
+        currentTrick = "glide";
+        trickTimer = 0;
+        trickDuration = 0; 
+        trickLocked = true;
+        glideActive = true;
+    }
+
+    function endGlideTrick() {
+        glideActive = false;
+        currentTrick = null;
+        trickTimer = 0;
+        trickDuration = 0;
+        // trickLocked stays true until landing (only one trick per jump)
+    }
+
+    function resetTrickStateOnLanding() {
+        // penalty if landing before flip
+        if (currentTrick === "flip" || currentTrick === "glide") {
+            if (trickTimer < trickDuration || glideActive === true) {
+                score -= TRICK_FAIL_PENALTY;
+                if (score < 0) score = 0;
+
+                const cx = player.x + PLAYER_SIZE / 2;
+                const cy = player.y + PLAYER_SIZE / 2 - PLAYER_SIZE * 0.35; // near penguin (same offset as drawing)
+
+                const radius = PLAYER_SIZE * 0.3;   
+                const theta = Math.random() * Math.PI * 2;
+                const r = radius * Math.random();
+
+                const worldX = cx + r * Math.cos(theta);
+                const worldY = cy + r * Math.sin(theta);
+
+                floatingTexts.push({
+                    x: worldX,
+                    y: worldY,
+                    vy: -60,                   // pixels/sec upward
+                    life: FLOAT_TEXT_LIFETIME,
+                    maxLife: FLOAT_TEXT_LIFETIME,
+                    text: "-1500",
+                    color: "red",
+                });
+            }
+        }
+
+
+        currentTrick = null;
+        trickTimer = 0;
+        trickDuration = 0;
+        trickLocked = false;
+        tapPending = false;
+        if (tapTimeoutId !== null) {
+            clearTimeout(tapTimeoutId);
+            tapTimeoutId = null;
+        }
+        pressInAir = false;
+        glideActive = false;
+    }
+
+    function handleAirTap(nowMs) {
+        if (trickLocked || currentTrick === "glide") return;
+
+        if (!tapPending) {
+            tapPending = true;
+            lastTapTimeMs = nowMs;
+            tapTimeoutId = setTimeout(() => {
+                if (!tapPending) return;
+                tapPending = false;
+                startFlipTrick();    
+            }, DOUBLE_TAP_WINDOW);
+        }
     }
 
 
@@ -350,11 +516,14 @@
 
         if (eegSampleRate === 0) eegSampleRate = 50;
 
+        wasOnGround = player.onGround;
+
         // advance game-time and convert to EDF time
         eegTime += dt * EEG_SCROLL_SPEED;
         const effectiveTime = eegTime + EEG_START_OFFSET_SEC;
         lastEffectiveTime = effectiveTime;
 
+        // update sleep stage for HUD
         updateSleepStageForTime(effectiveTime);
 
         const headSample = Math.floor(effectiveTime * eegSampleRate);
@@ -403,6 +572,7 @@
 
         if (waveYAtPlayer !== null) {
             if (playerBottom >= waveYAtPlayer) {
+                // snap onto the wave
                 player.y = waveYAtPlayer - PLAYER_SIZE;
                 player.vy = 0;
                 player.onGround = true;
@@ -436,7 +606,45 @@
                 }
             }
         }
+
+        // detect rapid upward travel while mostly grounded and auto-jump
+        if (player.onGround) {
+            if (!wasOnGround) {
+                launchBaselineY = player.y;
+                launchBaselineTime = worldTime;
+            } else {
+                const dtSince = worldTime - launchBaselineTime;
+                const rise = launchBaselineY - player.y;
+
+                if (
+                    dtSince <= TERRAIN_LAUNCH_WINDOW &&
+                    rise >= TERRAIN_LAUNCH_MIN_RISE
+                ) {
+                    player.onGround = false;
+
+                    const BOOST = 0.6;
+                    player.vy = JUMP_VELOCITY * BOOST;
+
+                    const JUMP_TILT = 0.03;
+                    player.airBaseAngle = player.angle + JUMP_TILT;
+                    player.angle = player.airBaseAngle;
+
+                    launchBaselineY = player.y;
+                    launchBaselineTime = worldTime;
+                } else if (dtSince > TERRAIN_LAUNCH_WINDOW) {
+                    launchBaselineY = player.y;
+                    launchBaselineTime = worldTime;
+                }
+            }
+        }
+        if (!wasOnGround && player.onGround) {
+            resetTrickStateOnLanding();
+        }
+
+        wasOnGround = player.onGround;
     }
+
+
 
     // PHYSICS & GAME LOGIC
     function update(dt) {
@@ -444,8 +652,56 @@
 
         score += dt * SCORE_SPEED;
 
-        player.vy += GRAVITY * dt;
+        // Gravity (slower while gliding)
+        const g = currentTrick === "glide" ? GLIDE_GRAVITY : GRAVITY;
+        if (currentTrick === "glide") {
+            player.vy = 80;
+        }
+        player.vy += g * dt;
         player.y += player.vy * dt;
+        if (currentTrick === "glide" && player.vy < 0) {
+            endGlideTrick();
+        }
+
+        // Trick timing + glide scoring
+        if (currentTrick) {
+            trickTimer += dt;
+            if (currentTrick === "glide") {
+                score += 400 * dt;
+
+                const cx = player.x + PLAYER_SIZE / 2;
+                const cy = player.y + PLAYER_SIZE / 2 - PLAYER_SIZE * 0.35; 
+
+                const radius = PLAYER_SIZE * 0.9;    
+                const theta = Math.random() * Math.PI * 2;
+                const r = radius * Math.random();
+
+                const worldX = cx + r * Math.cos(theta);
+                const worldY = cy + r * Math.sin(theta);
+
+                floatingTexts.push({
+                    x: worldX,
+                    y: worldY,
+                    vy: -60,                  
+                    life: FLOAT_TEXT_LIFETIME,
+                    maxLife: FLOAT_TEXT_LIFETIME,
+                    text: "+1",
+                });
+            }
+
+            if (
+                (currentTrick === "flip") &&
+                trickTimer >= trickDuration &&
+                trickDuration > 0
+            ) {
+                currentTrick = null;
+                trickTimer = 0;
+                trickDuration = 0;
+            }
+        }
+
+
+
 
         // SURF TRAIL PARTICLES
         if (player.onGround) {
@@ -479,27 +735,29 @@
             }
         }
 
-        /* Clamp at very bottom of canvas as a safety net
-        const baseline = groundY - PLAYER_SIZE;
-        if (player.y > baseline) {
-            player.y = baseline;
-            player.vy = 0;
-            player.onGround = true;
+        for (let i = floatingTexts.length - 1; i >= 0; i--) {
+            const ft = floatingTexts[i];
+            ft.life -= dt;
+            ft.y += ft.vy * dt;
+
+            if (ft.life <= 0) {
+                floatingTexts.splice(i, 1);
+            }
         }
 
-        const topClamp = canvas.height * 0.05; // 5% from the top
-        if (player.y < topClamp) {
-            player.y = topClamp;
-            if (player.vy < 0) player.vy = 0;
-        }*/
 
         // Air tilt
         if (!player.onGround) {
             const targetOffset = (player.vy < 0) ? -MAX_AIR_TILT : MAX_AIR_TILT;
             const currentOffset = player.angle - player.airBaseAngle;
-            const newOffset = (player.angle < Math.PI / 12) ?
-                currentOffset + (targetOffset - currentOffset) * AIR_TILT_SPEED * dt :
-                currentOffset + (targetOffset - currentOffset) * SLOW_TILT_SPEED * dt;
+            let newOffset = 0;
+            if (glideActive === true) {
+                newOffset = currentOffset + (targetOffset - currentOffset) * GLIDE_TILT_SPEED * dt;
+            } else if (player.angle < Math.PI / 12) {
+                newOffset = currentOffset + (targetOffset - currentOffset) * AIR_TILT_SPEED * dt;
+            } else {
+                newOffset = currentOffset + (targetOffset - currentOffset) * SLOW_TILT_SPEED * dt;
+            }
             player.angle = player.airBaseAngle + newOffset;
         }
 
@@ -512,6 +770,11 @@
             if (coyoteTimer <= 0) {
                 canCoyoteJump = false;
             }
+        }
+
+        if (flipAnimTimeLeft > 0) {
+            flipAnimTimeLeft -= dt;
+            if (flipAnimTimeLeft < 0) flipAnimTimeLeft = 0;
         }
     }
 
@@ -534,7 +797,54 @@
         ctx.translate(cx, cy);
         ctx.rotate(angle);
 
-        if (playerImgLoaded) {
+        const isFlipAnimating =
+            flipAnimTimeLeft > 0 &&
+            flipBoardLoaded &&
+            flipPenguinLoaded;
+
+        const isGlideAnimating =
+            glideActive &&
+            glidePenguinLoaded;
+
+        if (isGlideAnimating) {
+            ctx.drawImage(
+                glidePenguinImg,
+                -PLAYER_SIZE / 2,
+                -PLAYER_SIZE / 2 - 30,
+                PLAYER_SIZE + 10,
+                PLAYER_SIZE + 23,
+            );
+
+        } else if (isFlipAnimating) {
+            ctx.drawImage(
+                flipBoardImg,
+                -PLAYER_SIZE / 2,
+                -PLAYER_SIZE / 2,
+                PLAYER_SIZE,
+                PLAYER_SIZE
+            );
+
+            ctx.save();
+
+            const PENGUIN_OFFSET = PLAYER_SIZE * 0.35; // tweak height above board
+            ctx.translate(0, -PENGUIN_OFFSET);
+
+            // Make the penguin spin over the time window
+            const phase = 1 - (flipAnimTimeLeft / FLIP_DURATION); 
+            const spinAngle = phase * 2 * Math.PI; 
+
+            ctx.rotate(spinAngle);
+
+            ctx.drawImage(
+                flipPenguinImg,
+                -PLAYER_SIZE / 2,
+                -PLAYER_SIZE / 2,
+                PLAYER_SIZE,
+                PLAYER_SIZE
+            );
+
+            ctx.restore();
+        } else if (playerImgLoaded) {
             ctx.drawImage(
                 playerImg,
                 -PLAYER_SIZE / 2,
@@ -561,6 +871,24 @@
 
         for (const p of particles) {
             ctx.fillRect(p.x, p.y, p.size, p.size);
+        }
+
+        ctx.restore();
+
+        ctx.save();
+        ctx.textAlign = "center";
+        ctx.textBaseline = "middle";
+        ctx.font = "20px Liberation Mono, Courier, system-ui, sans-serif";
+
+        for (const ft of floatingTexts) {
+            const alpha = Math.max(ft.life / ft.maxLife, 0); // fade out
+            ctx.globalAlpha = alpha;
+            if (ft.color == "red") {
+                ctx.fillStyle = "#a10000ff";
+            } else {
+                ctx.fillStyle = "#000000";
+            }
+            ctx.fillText(ft.text, ft.x, ft.y);
         }
 
         ctx.restore();
@@ -609,6 +937,7 @@
     function loop(timestamp) {
         const dt = (timestamp - lastTime) / 1000;
         lastTime = timestamp;
+        worldTime += dt;
 
         update(dt);
         draw(dt);
@@ -635,15 +964,72 @@
         coyoteTimer = 0;
     }
 
-    window.addEventListener("keydown", (e) => {
-        if (
+    function isPrimaryKey(e) {
+        return (
             e.code === "Space" ||
+            e.key === " " ||
             e.key === "ArrowUp" ||
             e.key === "w" ||
             e.key === "W"
-        ) {
-            e.preventDefault();
+        );
+    }
+
+    function handlePrimaryDown() {
+        primaryDown = true;
+        const nowMs = performance.now();
+
+        if (!player) return;
+
+        if (player.onGround || canCoyoteJump) {
             jump();
+            return;
+        }
+
+        if (trickLocked) return;
+
+        pressInAir = true;
+
+        // If held long enough, start glide
+        holdTimerId = setTimeout(() => {
+            if (!pressInAir || trickLocked || currentTrick) return;
+            startGlideTrick();
+        }, HOLD_THRESHOLD);
+    }
+
+    function handlePrimaryUp() {
+        primaryDown = false;
+        const nowMs = performance.now();
+
+        if (holdTimerId !== null) {
+            clearTimeout(holdTimerId);
+            holdTimerId = null;
+        }
+
+        if (!player) return;
+
+        if (currentTrick === "glide") {
+            endGlideTrick();
+            pressInAir = false;
+            return;
+        }
+
+        if (
+            pressInAir &&           
+            !player.onGround &&
+            !canCoyoteJump &&
+            !trickLocked &&
+            !currentTrick
+        ) {
+            handleAirTap(nowMs);
+        }
+
+        pressInAir = false;
+    }
+
+    window.addEventListener("keydown", (e) => {
+        if (isPrimaryKey(e)) {
+            e.preventDefault();
+            handlePrimaryDown();
         }
 
         if (e.key === "r" || e.key === "R") {
@@ -654,9 +1040,22 @@
         }
     });
 
-    window.addEventListener("pointerdown", () => {
-        jump();
+    window.addEventListener("keyup", (e) => {
+        if (isPrimaryKey(e)) {
+            handlePrimaryUp();
+        }
     });
+
+    window.addEventListener("pointerdown", (e) => {
+        e.preventDefault();
+        handlePrimaryDown();
+    });
+
+    window.addEventListener("pointerup", () => {
+        handlePrimaryUp();
+    });
+
+
 
     if (datasetControlsEl) {
         datasetControlsEl.addEventListener("click", (e) => {
