@@ -656,7 +656,9 @@
 
         currentWaveAmp = ampAtPlayer;
         wasOnGround = player.onGround;
-        SurfAudio.update(player.onGround, currentWaveAmp, currentTrick);
+        if (window.SurfAudio && typeof SurfAudio.update === "function") {
+            SurfAudio.update(player.onGround, currentWaveAmp, currentTrick);
+        }
     }
 
 
@@ -1005,7 +1007,9 @@
     function handlePrimaryDown() {
         primaryDown = true;
         const nowMs = performance.now();
-        SurfAudio.ensure();
+        if (window.SurfAudio && typeof SurfAudio.ensure === "function") {
+            SurfAudio.ensure();
+        }
 
         if (!player) return;
 
@@ -1141,13 +1145,13 @@
 
     window.addEventListener("blur", () => {
         if (window.SurfAudio) {
-            SurfAudio.pause();              
+            SurfAudio.pause();
         }
     });
 
     document.addEventListener("visibilitychange", () => {
         if (document.hidden && window.SurfAudio) {
-            SurfAudio.pause();              
+            SurfAudio.pause();
         }
     });
 

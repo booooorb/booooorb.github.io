@@ -38,26 +38,24 @@
             // wind noise for gliding
             this.windGain = ctx.createGain();
             this.windGain.gain.value = 0;    // start silent
-            this.windGain.connect(ctx.destination);
 
             // sfx 
             this.sfxGain = ctx.createGain();
             this.sfxGain.gain.value = 0.10;   // overall SFX volume
-            this.sfxGain.connect(ctx.destination);
 
             this.ready = true;
+
+            // Connect to output
+            this.osc.connect(this.gain);
+            this.gain.connect(ctx.destination);
+            this.sfxGain.connect(ctx.destination);
+            this.windGain.connect(ctx.destination);
 
             // Load MP3
             this.loadWind("sounds/wind_glide.mp3");
             this.loadFlip("sounds/flip.mp3");
             this.loadCrash("sounds/crash.mp3");
 
-            // Connect to output
-            this.gain.connect(this.audioCtx.destination);
-            this.windGain.connect(this.audioCtx.destination);
-
-            this.osc.connect(this.gain);
-            this.gain.connect(this.audioCtx.destination);
             this.osc.start();
 
             this.ready = true;
@@ -123,7 +121,7 @@
             const src = ctx.createBufferSource();
             src.buffer = this.flipBuffer;
             src.connect(this.sfxGain);
-            src.start(0);   
+            src.start(0);
         },
 
         playCrash() {
@@ -133,7 +131,7 @@
             const src = ctx.createBufferSource();
             src.buffer = this.crashBuffer;
             src.connect(this.sfxGain);
-            src.start(0); 
+            src.start(0);
         },
 
         startWindIfNeeded() {
