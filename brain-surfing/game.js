@@ -105,6 +105,7 @@
     let player;
     let lastTime = performance.now();
     let worldTime = 0;
+    let currentWaveAmp = 0;
 
     let score = 0;
     const SCORE_SPEED = 30;
@@ -188,7 +189,7 @@
     // images for tricks
     const flipBoardImg = new Image();
     let flipBoardLoaded = false;
-    flipBoardImg.src = "flip1_p.png"; 
+    flipBoardImg.src = "flip1_p.png";
     flipBoardImg.onload = () => {
         flipBoardLoaded = true;
         console.log("Flip board image loaded");
@@ -196,7 +197,7 @@
 
     const flipPenguinImg = new Image();
     let flipPenguinLoaded = false;
-    flipPenguinImg.src = "flip1_b.png"; 
+    flipPenguinImg.src = "flip1_b.png";
     flipPenguinImg.onload = () => {
         flipPenguinLoaded = true;
         console.log("Flip penguin image loaded");
@@ -204,7 +205,7 @@
 
     const glidePenguinImg = new Image();
     let glidePenguinLoaded = false;
-    glidePenguinImg.src = "glide_p.png"; 
+    glidePenguinImg.src = "glide_p.png";
     glidePenguinImg.onload = () => {
         glidePenguinLoaded = true;
         console.log("Glide penguin image loaded");
@@ -217,12 +218,15 @@
         trickDuration = FLIP_DURATION;
         trickLocked = true;
         score += 1000;
+        if (window.SurfAudio && SurfAudio.playFlip) {
+            SurfAudio.playFlip();
+        }
         flipAnimTimeLeft = FLIP_DURATION * 2 / 3;
 
         const cx = player.x + PLAYER_SIZE / 2;
         const cy = player.y + PLAYER_SIZE / 2 - PLAYER_SIZE * 0.35;
 
-        const radius = PLAYER_SIZE * 0.3;    
+        const radius = PLAYER_SIZE * 0.3;
         const theta = Math.random() * Math.PI * 2;
         const r = radius * Math.random();
 
@@ -245,7 +249,7 @@
         if (trickLocked || currentTrick || !player || player.onGround) return;
         currentTrick = "glide";
         trickTimer = 0;
-        trickDuration = 0; 
+        trickDuration = 0;
         trickLocked = true;
         glideActive = true;
     }
@@ -264,11 +268,14 @@
             if (trickTimer < trickDuration || glideActive === true) {
                 score -= TRICK_FAIL_PENALTY;
                 if (score < 0) score = 0;
+                if (window.SurfAudio && SurfAudio.playCrash) {
+                    SurfAudio.playCrash();
+                }
 
                 const cx = player.x + PLAYER_SIZE / 2;
                 const cy = player.y + PLAYER_SIZE / 2 - PLAYER_SIZE * 0.35; // near penguin (same offset as drawing)
 
-                const radius = PLAYER_SIZE * 0.3;   
+                const radius = PLAYER_SIZE * 0.3;
                 const theta = Math.random() * Math.PI * 2;
                 const r = radius * Math.random();
 
@@ -310,7 +317,7 @@
             tapTimeoutId = setTimeout(() => {
                 if (!tapPending) return;
                 tapPending = false;
-                startFlipTrick();    
+                startFlipTrick();
             }, DOUBLE_TAP_WINDOW);
         }
     }
@@ -535,6 +542,7 @@
 
         terrainProfile = new Array(w);
         let waveYAtPlayer = null;
+        let ampAtPlayer = 0;
 
         ctx.beginPath();
         ctx.lineWidth = 3;
@@ -564,6 +572,7 @@
 
             if (Math.abs(x - playerCenterX) < 1) {
                 waveYAtPlayer = waveY;
+                ampAtPlayer = amp01;
             }
         }
 
@@ -610,6 +619,7 @@
             }
         }
 
+
         // detect rapid upward travel while mostly grounded and auto-jump
         if (player.onGround) {
             if (!wasOnGround) {
@@ -644,7 +654,9 @@
             resetTrickStateOnLanding();
         }
 
+        currentWaveAmp = ampAtPlayer;
         wasOnGround = player.onGround;
+        SurfAudio.update(player.onGround, currentWaveAmp, currentTrick);
     }
 
 
@@ -673,9 +685,9 @@
                 score += 400 * dt;
 
                 const cx = player.x + PLAYER_SIZE / 2;
-                const cy = player.y + PLAYER_SIZE / 2 - PLAYER_SIZE * 0.35; 
+                const cy = player.y + PLAYER_SIZE / 2 - PLAYER_SIZE * 0.35;
 
-                const radius = PLAYER_SIZE * 0.9;    
+                const radius = PLAYER_SIZE * 0.9;
                 const theta = Math.random() * Math.PI * 2;
                 const r = radius * Math.random();
 
@@ -685,7 +697,7 @@
                 floatingTexts.push({
                     x: worldX,
                     y: worldY,
-                    vy: -60,                  
+                    vy: -60,
                     life: FLOAT_TEXT_LIFETIME,
                     maxLife: FLOAT_TEXT_LIFETIME,
                     text: "+1",
@@ -833,8 +845,8 @@
             ctx.translate(0, -PENGUIN_OFFSET);
 
             // Make the penguin spin over the time window
-            const phase = 1 - (flipAnimTimeLeft / FLIP_DURATION); 
-            const spinAngle = phase * 2 * Math.PI; 
+            const phase = 1 - (flipAnimTimeLeft / FLIP_DURATION);
+            const spinAngle = phase * 2 * Math.PI;
 
             ctx.rotate(spinAngle);
 
@@ -941,10 +953,18 @@
         }
     }
 
+    const MAX_DT = 0.1;
     // MAIN LOOP
     function loop(timestamp) {
-        const dt = (timestamp - lastTime) / 1000;
+        let dt = (timestamp - lastTime) / 1000;
         lastTime = timestamp;
+
+        if (dt > MAX_DT) {
+            dt = MAX_DT;
+        } else if (dt < 0) {
+            dt = 0;
+        }
+
         worldTime += dt;
 
         update(dt);
@@ -985,6 +1005,7 @@
     function handlePrimaryDown() {
         primaryDown = true;
         const nowMs = performance.now();
+        SurfAudio.ensure();
 
         if (!player) return;
 
@@ -1022,7 +1043,7 @@
         }
 
         if (
-            pressInAir &&           
+            pressInAir &&
             !player.onGround &&
             !canCoyoteJump &&
             !trickLocked &&
@@ -1116,6 +1137,18 @@
     window.addEventListener("resize", () => {
         resizeCanvas();
         createPlayer();
+    });
+
+    window.addEventListener("blur", () => {
+        if (window.SurfAudio) {
+            SurfAudio.pause();              
+        }
+    });
+
+    document.addEventListener("visibilitychange", () => {
+        if (document.hidden && window.SurfAudio) {
+            SurfAudio.pause();              
+        }
     });
 
     // Load default dataset (sleep demo)
