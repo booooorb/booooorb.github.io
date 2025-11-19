@@ -67,18 +67,21 @@
             eegUrl: "brainwave_runner_sleep.json",
             stagesUrl: "brainwave_stages_sleep.json",
             hasStages: true,
+            channel: "Fpz-Cz",
         },
         seizure: {
             label: "Seizure (demo)",
             eegUrl: "brainwave_runner_seizure.json",
             stagesUrl: "brainwave_stages_seizure.json",
             hasStages: true,
+            channel: "Cz",
         },
         user: {
             label: "User upload",
             eegUrl: null,   // loaded from <input type="file">
             stagesUrl: null,
             hasStages: false,
+            channel: null,
         },
     };
 
@@ -903,6 +906,8 @@
         }
         const timeText = "EDF time: " + formatClock(lastEffectiveTime);
 
+        const channelText = "Channel: " + (conf && conf.channel ? conf.channel : "N/A");
+
         ctx.save();
         ctx.textAlign = "center";
         ctx.textBaseline = "middle";
@@ -913,6 +918,9 @@
 
         ctx.font = "16px 'Courier New', monospace";
         ctx.fillText(timeText, w / 2, h * 0.39 + 50 + 20);
+
+        ctx.font = "16px 'Courier New', monospace";
+        ctx.fillText(channelText, w / 2, h * 0.39 + 50 + 40);
         ctx.restore();
 
         // BIG CENTER SCORE
