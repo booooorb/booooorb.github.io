@@ -25,6 +25,20 @@
         console.log("Player image loaded");
     };
 
+    // BACKGROUND IMAGE CONSTANTS
+    const BG_SCROLL_SPEED = 20;   // px/sec horizontally (tweak)
+    const bgImg = new Image();
+    let bgImgLoaded = false;
+    let bgScrollX = 0;            // horizontal offset in screen pixels
+    let bgScale = 0.25;              // scale so it covers the canvas vertically
+
+    bgImg.src = "background_sky_2.png";   
+    bgImg.onload = () => {
+        bgImgLoaded = true;
+        updateBgScale();
+        console.log("Background image loaded");
+    };
+
     let EEG_START_OFFSET_SEC = 11300;
 
     const MAX_AIR_TILT = Math.PI / 6; // max extra tilt in air (30°)
@@ -111,6 +125,7 @@
     const SCORE_SPEED = 30;
 
     let terrainProfile = [];
+    let waveTopY = 0;
 
     const TERRAIN_LAUNCH_WINDOW = 0.2; // seconds to look back
     const TERRAIN_LAUNCH_MIN_RISE = 45; // pixels "up" needed to trigger 
@@ -134,7 +149,7 @@
     let particles = [];
 
     // --- TRICK CONSTANTS ---
-    const FLIP_DURATION = 0.35;          // seconds, single tap
+    const FLIP_DURATION = 0.5;          // seconds, single tap
     const GLIDE_GRAVITY = 200;          // slower fall during glide
     const TRICK_FAIL_PENALTY = 1500;
     const DOUBLE_TAP_WINDOW = 220;      // ms
@@ -160,6 +175,37 @@
     const FLOAT_TEXT_LIFETIME = 0.7; // seconds
     let floatingTexts = [];          // {x, y, vy, life, maxLife, text, color}
 
+    const SPIKE_BASE_WIDTH = 20;          // width of the triangle base in px
+    const SPIKE_HEIGHT = 45;              // spike height in px
+    const SPIKE_SPEED = 340;              // how fast spikes move left (px/s)
+
+    const SPIKE_INTERVAL_START = 4.0;     // seconds between spikes at t=0
+    const SPIKE_INTERVAL_MIN = 0.8;       // smallest interval (cap on frequency)
+    const SPIKE_RAMP_DURATION = 10;      // seconds until we reach min interval
+
+    let spikes = [];                      // each: { x }
+    let spikeTimer = SPIKE_INTERVAL_START;
+
+    const BOAT_BASE_SCALE = 0.25;
+
+    const BOAT_CONFIGS = [
+        { src: "boat1.png", scale: 1 },
+        { src: "boat2.png", scale: 1 },
+        { src: "boat3.png", scale: 1 },
+        { src: "boat4.png", scale: 1 },
+        { src: "boat5.png", scale: 1 },
+        { src: "boat6.png", scale: 1 },
+    ];
+
+    // Load images
+    for (const cfg of BOAT_CONFIGS) {
+        const img = new Image();
+        img.src = cfg.src;
+        cfg.img = img;
+    }
+
+
+
     // UTILS
     function formatClock(tSec) {
         const day = 24 * 3600;
@@ -184,6 +230,12 @@
         if (!labels) return code;
 
         return labels[code] || code;
+    }
+
+    function updateBgScale() {
+        if (!bgImgLoaded || !canvas.height) return;
+        const targetHeight = canvas.height;
+        // bgScale = targetHeight / bgImg.height;
     }
 
     // images for tricks
@@ -308,18 +360,9 @@
         glideActive = false;
     }
 
-    function handleAirTap(nowMs) {
+    function handleAirTap() {
         if (trickLocked || currentTrick === "glide") return;
-
-        if (!tapPending) {
-            tapPending = true;
-            lastTapTimeMs = nowMs;
-            tapTimeoutId = setTimeout(() => {
-                if (!tapPending) return;
-                tapPending = false;
-                startFlipTrick();
-            }, DOUBLE_TAP_WINDOW);
-        }
+        startFlipTrick();
     }
 
 
@@ -349,7 +392,7 @@
         const smoothSec = (smoothSamples / eegSampleRate).toFixed(2);
         infoEl.innerHTML = [
             "EEG processing:",
-            "- EEG Fpz-Cz channel, normalized to [-1, 1]",
+            "- EEG data normalized to be between [-1, 1]",
             `- One sample is taken every ${smoothSamples} data points for smoothing (one sample every ~${smoothSec}s at ${eegSampleRate}Hz)`,
             " (does not accurately represent fast activity such as spindles or sharp K-complexes)",
             `- amplitude scale: ×${AMP_SCALE}, clipped to fit canvas`,
@@ -461,6 +504,8 @@
         const rect = canvas.getBoundingClientRect();
         canvas.width = rect.width;
         groundY = canvas.height - GROUND_MARGIN;
+
+        updateBgScale();
     }
 
     function createPlayer() {
@@ -479,6 +524,26 @@
         eegTime = 0;
         sleepIndex = 0;
         score = 0;
+
+        // reset spike system
+        spikes = [];
+        spikeTimer = SPIKE_INTERVAL_START;
+        worldTime = 0;
+        isGameOver = false;
+    }
+
+    function getBoatDrawSize(cfg) {
+        const img = cfg.img;
+        const naturalW = (img && img.naturalWidth) ? img.naturalWidth : 32;
+        const naturalH = (img && img.naturalHeight) ? img.naturalHeight : 32;
+
+        const base = BOAT_BASE_SCALE;
+        const perBoat = (cfg.scale != null ? cfg.scale : 1.0);
+        const s = base * perBoat;
+
+        const drawW = naturalW * s;
+        const drawH = naturalH * s;
+        return { drawW, drawH };
     }
 
     // SLEEP STAGE LOOKUP
@@ -519,21 +584,19 @@
         }
     }
 
-    // DRAW EEG + COLLISION + GROUND-BASED ROTATION
-    function drawWaveAndCollide(dt) {
+    function computeTerrainAndCollide(dt) {
         const w = canvas.width;
         const baselineY = groundY;
 
         if (eegSampleRate === 0) eegSampleRate = 50;
 
+        // previous grounded state (for landing / launch logic)
         wasOnGround = player.onGround;
 
-        // advance game-time and convert to EDF time
+        // Advance EEG time and look up sleep stage
         eegTime += dt * EEG_SCROLL_SPEED;
         const effectiveTime = eegTime + EEG_START_OFFSET_SEC;
         lastEffectiveTime = effectiveTime;
-
-        // update sleep stage for HUD
         updateSleepStageForTime(effectiveTime);
 
         const headSample = Math.floor(effectiveTime * eegSampleRate);
@@ -541,15 +604,9 @@
         const playerCenterX = player.x + PLAYER_SIZE / 2;
 
         terrainProfile = new Array(w);
-        let waveYAtPlayer = null;
         let ampAtPlayer = 0;
 
-        ctx.beginPath();
-        ctx.lineWidth = 3;
-        ctx.lineJoin = "round";
-        ctx.lineCap = "round";
-        ctx.imageSmoothingEnabled = true;
-
+        // Build the terrain profile only (no drawing here)
         for (let x = 0; x < w; x++) {
             const samplesBehindHead = w - 1 - x;
             const sampleOffset = samplesBehindHead * HORIZONTAL_SAMPLE_STEP;
@@ -564,33 +621,44 @@
 
             terrainProfile[x] = waveY;
 
-            if (x === 0) {
-                ctx.moveTo(x + 0.5, waveY + 0.5);
-            } else {
-                ctx.lineTo(x + 0.5, waveY + 0.5);
-            }
-
+            // use center point only for audio amplitude
             if (Math.abs(x - playerCenterX) < 1) {
-                waveYAtPlayer = waveY;
                 ampAtPlayer = amp01;
             }
         }
 
-        ctx.strokeStyle = "#000000";
-        ctx.stroke();
-
-        // COLLISION WITH WAVE
+        // COLLISION WITH WAVE: check whole board width, only when falling
         const playerBottom = player.y + PLAYER_SIZE;
+        const GROUND_EPS = 4; // small tolerance
 
-        if (waveYAtPlayer !== null) {
-            if (playerBottom >= waveYAtPlayer) {
-                // snap onto the wave
-                player.y = waveYAtPlayer - PLAYER_SIZE;
-                player.vy = 0;
-                player.onGround = true;
-            } else {
-                player.onGround = false;
+        let contactY = null;
+        if (terrainProfile && terrainProfile.length > 0) {
+            const left = Math.max(0, Math.floor(player.x));
+            const right = Math.min(
+                terrainProfile.length - 1,
+                Math.ceil(player.x + PLAYER_SIZE)
+            );
+
+            for (let ix = left; ix <= right; ix++) {
+                const y = terrainProfile[ix];
+                if (y == null) continue;
+                // highest (smallest y) wave point under the board
+                if (contactY === null || y < contactY) {
+                    contactY = y;
+                }
             }
+        }
+
+        if (
+            contactY !== null &&
+            playerBottom >= contactY - GROUND_EPS &&
+            player.vy >= 0              // ⬅ only land when not moving upward
+        ) {
+            if (playerBottom > contactY) {
+                player.y = contactY - PLAYER_SIZE;
+            }
+            player.vy = 0;
+            player.onGround = true;
         } else {
             player.onGround = false;
         }
@@ -619,8 +687,8 @@
             }
         }
 
-
-        // detect rapid upward travel while mostly grounded and auto-jump
+        // TERRAIN-BASED AUTO-LAUNCH
+        /*
         if (player.onGround) {
             if (!wasOnGround) {
                 launchBaselineY = player.y;
@@ -633,6 +701,7 @@
                     dtSince <= TERRAIN_LAUNCH_WINDOW &&
                     rise >= TERRAIN_LAUNCH_MIN_RISE
                 ) {
+                    // launch off steep slope
                     player.onGround = false;
 
                     const BOOST = 0.6;
@@ -649,17 +718,196 @@
                     launchBaselineTime = worldTime;
                 }
             }
-        }
+        } */
+
+        // detect real landings (air → ground)
         if (!wasOnGround && player.onGround) {
             resetTrickStateOnLanding();
         }
 
         currentWaveAmp = ampAtPlayer;
-        wasOnGround = player.onGround;
         if (window.SurfAudio && typeof SurfAudio.update === "function") {
             SurfAudio.update(player.onGround, currentWaveAmp, currentTrick);
         }
     }
+
+    function spawnSpike() {
+        if (!canvas) return;
+
+        // Pick a random boat config
+        const boatIndex = Math.floor(Math.random() * BOAT_CONFIGS.length);
+        const cfg = BOAT_CONFIGS[boatIndex];
+
+        const { drawW } = getBoatDrawSize(cfg);
+
+        const spawnX = canvas.width + drawW;
+
+        spikes.push({
+            x: spawnX,
+            boatIndex,
+        });
+    }
+
+    function handleSpikeHit() {
+        if (isGameOver) return;
+        isGameOver = true;
+
+        if (window.SurfAudio) {
+            if (SurfAudio.playCrash) {
+                SurfAudio.playCrash();
+            }
+            // Stop all ongoing game sounds (wind, tone, etc.)
+            if (SurfAudio.pause) {
+                SurfAudio.pause();
+            }
+        }
+    }
+
+    function updateSpikes(dt) {
+        if (!terrainProfile || terrainProfile.length === 0 || !player) return;
+
+        // SPAWN + TIMING
+        spikeTimer -= dt;
+        while (spikeTimer <= 0) {
+            spawnSpike();
+
+            const t = Math.min(worldTime, SPIKE_RAMP_DURATION);
+            const alpha = SPIKE_RAMP_DURATION > 0 ? t / SPIKE_RAMP_DURATION : 1;
+
+            // Base interval from ramp
+            const baseInterval =
+                SPIKE_INTERVAL_START -
+                (SPIKE_INTERVAL_START - SPIKE_INTERVAL_MIN) * alpha;
+
+            // Very wide random jitter around the base interval
+            const jitterFactor = 0.2 + Math.random() * 2.8;  // 0.2–3.0×
+            let interval = baseInterval * jitterFactor;
+
+            // Never go below the hard minimum
+            if (interval < SPIKE_INTERVAL_MIN) {
+                interval = SPIKE_INTERVAL_MIN;
+            }
+
+            spikeTimer += interval;
+        }
+
+        // MOVEMENT COLLISION
+
+        const sampleY = player.y + PLAYER_SIZE * 0.9; 
+        const samplePoints = [
+            { x: player.x + PLAYER_SIZE * 0.25, y: sampleY },
+            { x: player.x + PLAYER_SIZE * 0.5,  y: sampleY },
+            { x: player.x + PLAYER_SIZE * 0.75, y: sampleY },
+        ];
+
+        for (let i = spikes.length - 1; i >= 0; i--) {
+            const s = spikes[i];
+
+            s.x -= SPIKE_SPEED * dt;
+
+            // Remove boats that have left the screen
+            if (s.x < -200) {
+                spikes.splice(i, 1);
+                continue;
+            }
+
+            const cfg = BOAT_CONFIGS[s.boatIndex];
+            if (!cfg) continue;
+
+            const idx = Math.max(
+                0,
+                Math.min(terrainProfile.length - 1, Math.round(s.x))
+            );
+            const baseY = terrainProfile[idx];
+            if (baseY == null) continue;
+
+            // Get draw size based on image dimensions + scale
+            const { drawW, drawH } = getBoatDrawSize(cfg);
+
+            const left = s.x - drawW / 2;
+            const right = s.x + drawW / 2;
+            const top = baseY - drawH;
+            const bottom = baseY;
+
+            const hitLeft   = left   + drawW * 0.10;
+            const hitRight  = right  - drawW * 0.10;
+            const hitTop    = top    + drawH * 0.15;
+            const hitBottom = bottom;          
+
+            for (const p of samplePoints) {
+                if (
+                    p.x >= hitLeft &&
+                    p.x <= hitRight &&
+                    p.y >= hitTop &&
+                    p.y <= hitBottom
+                ) {
+                    handleSpikeHit();
+                    return; // stop after first hit
+                }
+            }
+        }
+    }
+
+    function drawSpikes() {
+        if (!terrainProfile || terrainProfile.length === 0) return;
+        if (!spikes.length) return;
+
+        ctx.save();
+        ctx.imageSmoothingEnabled = false; // keep pixel art crisp
+
+        for (const s of spikes) {
+            const cfg = BOAT_CONFIGS[s.boatIndex];
+            const img = cfg && cfg.img;
+            if (!cfg || !img) continue;
+
+            const idx = Math.max(
+                0,
+                Math.min(terrainProfile.length - 1, Math.round(s.x))
+            );
+            const baseY = terrainProfile[idx];
+            if (baseY == null) continue;
+
+            const { drawW, drawH } = getBoatDrawSize(cfg);
+
+            const left = s.x - drawW / 2;
+            const top = baseY - drawH;   // bottom of boat touches wave
+
+            if (img.complete && img.naturalWidth > 0) {
+                ctx.drawImage(img, left, top, drawW, drawH);
+            } else {
+                // Fallback: debug rectangle if image not yet loaded
+                ctx.fillStyle = "#000000";
+                ctx.fillRect(left, top, drawW, drawH);
+            }
+        }
+
+        ctx.restore();
+    }
+
+    function renderWave() {
+        const w = canvas.width;
+        if (!terrainProfile || terrainProfile.length !== w) return;
+
+        ctx.beginPath();
+        ctx.lineWidth = 3;
+        ctx.lineJoin = "round";
+        ctx.lineCap = "round";
+        ctx.imageSmoothingEnabled = true;
+
+        for (let x = 0; x < w; x++) {
+            const waveY = terrainProfile[x];
+            if (waveY == null) continue;
+            if (x === 0) {
+                ctx.moveTo(x + 0.5, waveY + 0.5);
+            } else {
+                ctx.lineTo(x + 0.5, waveY + 0.5);
+            }
+        }
+
+        ctx.strokeStyle = "#000000ff";
+        ctx.stroke();
+    }
+
 
 
 
@@ -668,6 +916,15 @@
         if (!player || isGameOver) return;
 
         score += dt * SCORE_SPEED;
+
+        // Update wave geometry + collisions
+
+        // Scroll the sky background
+        if (bgImgLoaded) {
+            const tileW = bgImg.width * bgScale || 1;
+            bgScrollX = (bgScrollX + BG_SCROLL_SPEED * dt) % tileW;
+        }
+
 
         // Gravity (slower while gliding)
         const g = currentTrick === "glide" ? GLIDE_GRAVITY : GRAVITY;
@@ -679,6 +936,9 @@
         if (currentTrick === "glide" && player.vy < 0) {
             endGlideTrick();
         }
+
+        computeTerrainAndCollide(dt);
+        updateSpikes(dt);
 
         // Trick timing + glide scoring
         if (currentTrick) {
@@ -702,7 +962,7 @@
                     vy: -60,
                     life: FLOAT_TEXT_LIFETIME,
                     maxLife: FLOAT_TEXT_LIFETIME,
-                    text: "+1",
+                    text: "+5",
                 });
             }
 
@@ -795,6 +1055,42 @@
         }
     }
 
+    function drawBackgroundAboveWave() {
+        if (!bgImgLoaded || !terrainProfile || terrainProfile.length === 0) return;
+
+        const w = canvas.width;
+
+        ctx.save();
+
+        // Clip region = everything ABOVE the wave polyline
+        ctx.beginPath();
+        ctx.moveTo(0, 0);
+        ctx.lineTo(w, 0);
+        for (let x = w - 1; x >= 0; x--) {
+            const waveY = terrainProfile[x];
+            if (waveY == null) continue;
+            ctx.lineTo(x + 0.5, waveY + 0.5);
+        }
+        ctx.closePath();
+        ctx.clip();
+
+        ctx.imageSmoothingEnabled = true;
+        ctx.globalAlpha = 0.35;   // background transparency
+
+        const imgW = bgImg.width * bgScale;
+        const imgH = bgImg.height * bgScale;
+
+        // Scroll horizontally
+        let startX = -bgScrollX;
+        while (startX > 0) startX -= imgW;
+
+        for (let x = startX; x < w; x += imgW) {
+            ctx.drawImage(bgImg, x, 0, imgW, imgH);
+        }
+
+        ctx.restore();
+    }
+
     // RENDER
     function draw(dt) {
         const w = canvas.width;
@@ -803,7 +1099,13 @@
         ctx.fillStyle = "#EAE7D9";
         ctx.fillRect(0, 0, w, h);
 
-        drawWaveAndCollide(dt);
+        // First paint clouds, but ONLY in the region above the wave curve
+        drawBackgroundAboveWave();
+
+        // Then draw the wave line itself on top
+        renderWave();
+
+        drawSpikes();
 
         // player
         const cx = player.x + PLAYER_SIZE / 2;
@@ -848,7 +1150,7 @@
 
             // Make the penguin spin over the time window
             const phase = 1 - (flipAnimTimeLeft / FLIP_DURATION);
-            const spinAngle = phase * 2 * Math.PI;
+            const spinAngle = phase * 4 * Math.PI;
 
             ctx.rotate(spinAngle);
 
@@ -911,47 +1213,70 @@
         ctx.restore();
 
 
-        // HUD
-        const conf = DATASETS[currentDatasetKey];
-        let stageText = "";
+        if (!isGameOver) {
+            // HUD (only when alive)
+            const conf = DATASETS[currentDatasetKey];
+            let stageText = "";
 
-        if (conf && conf.hasStages) {
-            stageText = "Stage: " + stagePretty(currentStageCode);
-        }
-        const timeText = "EDF time: " + formatClock(lastEffectiveTime);
+            if (conf && conf.hasStages) {
+                stageText = "Stage: " + stagePretty(currentStageCode);
+            }
+            const timeText = "EDF time: " + formatClock(lastEffectiveTime);
+            const channelText = "Channel: " + (conf && conf.channel ? conf.channel : "N/A");
 
-        const channelText = "Channel: " + (conf && conf.channel ? conf.channel : "N/A");
+            ctx.save();
+            ctx.textAlign = "center";
+            ctx.textBaseline = "middle";
 
-        ctx.save();
-        ctx.textAlign = "center";
-        ctx.textBaseline = "middle";
+            ctx.font = "20px 'Courier New', monospace";
+            ctx.fillStyle = "#000000";
+            ctx.fillText(stageText, w / 2, h * 0.39 + 50);
 
-        ctx.font = "20px 'Courier New', monospace";
-        ctx.fillStyle = "#000000";
-        ctx.fillText(stageText, w / 2, h * 0.39 + 50);
+            ctx.font = "16px 'Courier New', monospace";
+            ctx.fillText(timeText, w / 2, h * 0.39 + 50 + 20);
 
-        ctx.font = "16px 'Courier New', monospace";
-        ctx.fillText(timeText, w / 2, h * 0.39 + 50 + 20);
+            ctx.font = "16px 'Courier New', monospace";
+            ctx.fillText(channelText, w / 2, h * 0.39 + 50 + 40);
+            ctx.restore();
 
-        ctx.font = "16px 'Courier New', monospace";
-        ctx.fillText(channelText, w / 2, h * 0.39 + 50 + 40);
-        ctx.restore();
+            // BIG CENTER SCORE watermark
+            const scoreText = Math.floor(score).toString();
+            ctx.save();
+            ctx.globalAlpha = 0.18;
+            ctx.textAlign = "center";
+            ctx.textBaseline = "middle";
+            ctx.font = "bold 96px 'Trebuchet MS', 'Segoe UI', system-ui, sans-serif";
+            ctx.fillStyle = "#000000";
+            const scoreX = w / 2;
+            const scoreY = h * 0.39;
+            ctx.fillText(scoreText, scoreX, scoreY);
+            ctx.restore();
+        } else {
+            // GAME OVER SCREEN 
+            ctx.save();
 
-        // BIG CENTER SCORE
-        const scoreText = Math.floor(score).toString();
-        ctx.save();
-        ctx.globalAlpha = 0.18;
-        ctx.textAlign = "center";
-        ctx.textBaseline = "middle";
-        ctx.font = "bold 96px 'Trebuchet MS', 'Segoe UI', system-ui, sans-serif";
-        ctx.fillStyle = "#000000";
-        const scoreX = w / 2;
-        const scoreY = h * 0.39;
-        ctx.fillText(scoreText, scoreX, scoreY);
-        ctx.restore();
+            // Dark overlay
+            ctx.fillStyle = "rgba(0, 0, 0, 0.55)";
+            ctx.fillRect(0, 0, w, h);
 
-        if (isGameOver) {
-            // TODO: Game over screen
+            ctx.textAlign = "center";
+            ctx.textBaseline = "middle";
+            ctx.fillStyle = "#FFFFFF";
+
+            // Label
+            ctx.font = "bold 40px 'Trebuchet MS', 'Segoe UI', system-ui, sans-serif";
+            ctx.fillText("GAME OVER", w / 2, h * 0.30);
+
+            // Huge bold final score
+            const finalScoreText = Math.floor(score).toString();
+            ctx.font = "bold 110px 'Trebuchet MS', 'Segoe UI', system-ui, sans-serif";
+            ctx.fillText(finalScoreText, w / 2, h * 0.47);
+
+            // Instruction
+            ctx.font = "22px 'Courier New', monospace";
+            ctx.fillText("Press R to restart", w / 2, h * 0.47 + 70);
+
+            ctx.restore();
         }
     }
 
@@ -1004,16 +1329,41 @@
         );
     }
 
+    function canJumpNow() {
+        if (!player) return false;
+
+        if (player.onGround || canCoyoteJump) {
+            return true;
+        }
+
+        if (!terrainProfile || terrainProfile.length === 0) return false;
+
+        const w = canvas.width;
+        const centerX = Math.round(player.x + PLAYER_SIZE / 2);
+        const idx = Math.max(0, Math.min(w - 1, centerX));
+        const waveY = terrainProfile[idx];
+
+        if (waveY == null) return false;
+
+        const playerBottom = player.y + PLAYER_SIZE;
+        const JUMP_MARGIN = 8; // jump tolerance
+
+        return Math.abs(playerBottom - waveY) <= JUMP_MARGIN;
+    }
+
     function handlePrimaryDown() {
+        if (isGameOver) return;
+
+        if (primaryDown) return;
         primaryDown = true;
-        const nowMs = performance.now();
+
         if (window.SurfAudio && typeof SurfAudio.ensure === "function") {
             SurfAudio.ensure();
         }
 
         if (!player) return;
 
-        if (player.onGround || canCoyoteJump) {
+        if (canJumpNow()) {
             jump();
             return;
         }
@@ -1022,20 +1372,25 @@
 
         pressInAir = true;
 
-        // If held long enough, start glide
         holdTimerId = setTimeout(() => {
-            if (!pressInAir || trickLocked || currentTrick) return;
+            if (!pressInAir || trickLocked || currentTrick || isGameOver) return;
             startGlideTrick();
         }, HOLD_THRESHOLD);
     }
 
     function handlePrimaryUp() {
+        if (!primaryDown) return;
         primaryDown = false;
-        const nowMs = performance.now();
 
         if (holdTimerId !== null) {
             clearTimeout(holdTimerId);
             holdTimerId = null;
+        }
+
+        // No more actions after game over
+        if (isGameOver) {
+            pressInAir = false;
+            return;
         }
 
         if (!player) return;
@@ -1053,7 +1408,7 @@
             !trickLocked &&
             !currentTrick
         ) {
-            handleAirTap(nowMs);
+            handleAirTap();
         }
 
         pressInAir = false;
@@ -1086,6 +1441,20 @@
 
     window.addEventListener("pointerup", () => {
         handlePrimaryUp();
+    });
+
+    window.addEventListener("keydown", (e) => {
+        if (isPrimaryKey(e)) {
+            e.preventDefault();
+            handlePrimaryDown();
+        }
+
+        if (e.key === "r" || e.key === "R") {
+            if (isGameOver) {
+                isGameOver = false;
+                resetGame();
+            }
+        }
     });
 
 

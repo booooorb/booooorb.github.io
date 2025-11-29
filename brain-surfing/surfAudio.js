@@ -169,8 +169,8 @@
                 const maxFreq = 180;
                 const freq = minFreq + (maxFreq - minFreq) * amp01;
 
-                this.osc.frequency.setTargetAtTime(freq, t, 0.02);
-                this.gain.gain.setTargetAtTime(0.15, t, 0.07);
+                this.osc.frequency.setTargetAtTime(freq, t, 0.1);
+                this.gain.gain.setTargetAtTime(0.15, t, 0.4);
             } else {
                 this.gain.gain.setTargetAtTime(0.0, t, 0.05);
             }
