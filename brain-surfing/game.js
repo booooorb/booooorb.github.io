@@ -32,7 +32,7 @@
     let bgScrollX = 0;            // horizontal offset in screen pixels
     let bgScale = 0.25;              // scale so it covers the canvas vertically
 
-    bgImg.src = "background_sky_2.png";   
+    bgImg.src = "background_sky_2.png";
     bgImg.onload = () => {
         bgImgLoaded = true;
         updateBgScale();
@@ -174,35 +174,6 @@
 
     const FLOAT_TEXT_LIFETIME = 0.7; // seconds
     let floatingTexts = [];          // {x, y, vy, life, maxLife, text, color}
-
-    const SPIKE_BASE_WIDTH = 20;          // width of the triangle base in px
-    const SPIKE_HEIGHT = 45;              // spike height in px
-    const SPIKE_SPEED = 340;              // how fast spikes move left (px/s)
-
-    const SPIKE_INTERVAL_START = 4.0;     // seconds between spikes at t=0
-    const SPIKE_INTERVAL_MIN = 0.8;       // smallest interval (cap on frequency)
-    const SPIKE_RAMP_DURATION = 10;      // seconds until we reach min interval
-
-    let spikes = [];                      // each: { x }
-    let spikeTimer = SPIKE_INTERVAL_START;
-
-    const BOAT_BASE_SCALE = 0.25;
-
-    const BOAT_CONFIGS = [
-        { src: "boat1.png", scale: 1 },
-        { src: "boat2.png", scale: 1 },
-        { src: "boat3.png", scale: 1 },
-        { src: "boat4.png", scale: 1 },
-        { src: "boat5.png", scale: 1 },
-        { src: "boat6.png", scale: 1 },
-    ];
-
-    // Load images
-    for (const cfg of BOAT_CONFIGS) {
-        const img = new Image();
-        img.src = cfg.src;
-        cfg.img = img;
-    }
 
 
 
@@ -525,25 +496,14 @@
         sleepIndex = 0;
         score = 0;
 
-        // reset spike system
-        spikes = [];
-        spikeTimer = SPIKE_INTERVAL_START;
+        // reset world time / game state
         worldTime = 0;
         isGameOver = false;
-    }
 
-    function getBoatDrawSize(cfg) {
-        const img = cfg.img;
-        const naturalW = (img && img.naturalWidth) ? img.naturalWidth : 32;
-        const naturalH = (img && img.naturalHeight) ? img.naturalHeight : 32;
-
-        const base = BOAT_BASE_SCALE;
-        const perBoat = (cfg.scale != null ? cfg.scale : 1.0);
-        const s = base * perBoat;
-
-        const drawW = naturalW * s;
-        const drawH = naturalH * s;
-        return { drawW, drawH };
+        // reset spikes / boats
+        if (window.SpikeSystem && SpikeSystem.reset) {
+            SpikeSystem.reset();
+        }
     }
 
     // SLEEP STAGE LOOKUP
@@ -731,23 +691,6 @@
         }
     }
 
-    function spawnSpike() {
-        if (!canvas) return;
-
-        // Pick a random boat config
-        const boatIndex = Math.floor(Math.random() * BOAT_CONFIGS.length);
-        const cfg = BOAT_CONFIGS[boatIndex];
-
-        const { drawW } = getBoatDrawSize(cfg);
-
-        const spawnX = canvas.width + drawW;
-
-        spikes.push({
-            x: spawnX,
-            boatIndex,
-        });
-    }
-
     function handleSpikeHit() {
         if (isGameOver) return;
         isGameOver = true;
@@ -763,126 +706,6 @@
         }
     }
 
-    function updateSpikes(dt) {
-        if (!terrainProfile || terrainProfile.length === 0 || !player) return;
-
-        // SPAWN + TIMING
-        spikeTimer -= dt;
-        while (spikeTimer <= 0) {
-            spawnSpike();
-
-            const t = Math.min(worldTime, SPIKE_RAMP_DURATION);
-            const alpha = SPIKE_RAMP_DURATION > 0 ? t / SPIKE_RAMP_DURATION : 1;
-
-            // Base interval from ramp
-            const baseInterval =
-                SPIKE_INTERVAL_START -
-                (SPIKE_INTERVAL_START - SPIKE_INTERVAL_MIN) * alpha;
-
-            // Very wide random jitter around the base interval
-            const jitterFactor = 0.2 + Math.random() * 2.8;  // 0.2–3.0×
-            let interval = baseInterval * jitterFactor;
-
-            // Never go below the hard minimum
-            if (interval < SPIKE_INTERVAL_MIN) {
-                interval = SPIKE_INTERVAL_MIN;
-            }
-
-            spikeTimer += interval;
-        }
-
-        // MOVEMENT COLLISION
-
-        const sampleY = player.y + PLAYER_SIZE * 0.9; 
-        const samplePoints = [
-            { x: player.x + PLAYER_SIZE * 0.25, y: sampleY },
-            { x: player.x + PLAYER_SIZE * 0.5,  y: sampleY },
-            { x: player.x + PLAYER_SIZE * 0.75, y: sampleY },
-        ];
-
-        for (let i = spikes.length - 1; i >= 0; i--) {
-            const s = spikes[i];
-
-            s.x -= SPIKE_SPEED * dt;
-
-            // Remove boats that have left the screen
-            if (s.x < -200) {
-                spikes.splice(i, 1);
-                continue;
-            }
-
-            const cfg = BOAT_CONFIGS[s.boatIndex];
-            if (!cfg) continue;
-
-            const idx = Math.max(
-                0,
-                Math.min(terrainProfile.length - 1, Math.round(s.x))
-            );
-            const baseY = terrainProfile[idx];
-            if (baseY == null) continue;
-
-            // Get draw size based on image dimensions + scale
-            const { drawW, drawH } = getBoatDrawSize(cfg);
-
-            const left = s.x - drawW / 2;
-            const right = s.x + drawW / 2;
-            const top = baseY - drawH;
-            const bottom = baseY;
-
-            const hitLeft   = left   + drawW * 0.10;
-            const hitRight  = right  - drawW * 0.10;
-            const hitTop    = top    + drawH * 0.15;
-            const hitBottom = bottom;          
-
-            for (const p of samplePoints) {
-                if (
-                    p.x >= hitLeft &&
-                    p.x <= hitRight &&
-                    p.y >= hitTop &&
-                    p.y <= hitBottom
-                ) {
-                    handleSpikeHit();
-                    return; // stop after first hit
-                }
-            }
-        }
-    }
-
-    function drawSpikes() {
-        if (!terrainProfile || terrainProfile.length === 0) return;
-        if (!spikes.length) return;
-
-        ctx.save();
-        ctx.imageSmoothingEnabled = false; // keep pixel art crisp
-
-        for (const s of spikes) {
-            const cfg = BOAT_CONFIGS[s.boatIndex];
-            const img = cfg && cfg.img;
-            if (!cfg || !img) continue;
-
-            const idx = Math.max(
-                0,
-                Math.min(terrainProfile.length - 1, Math.round(s.x))
-            );
-            const baseY = terrainProfile[idx];
-            if (baseY == null) continue;
-
-            const { drawW, drawH } = getBoatDrawSize(cfg);
-
-            const left = s.x - drawW / 2;
-            const top = baseY - drawH;   // bottom of boat touches wave
-
-            if (img.complete && img.naturalWidth > 0) {
-                ctx.drawImage(img, left, top, drawW, drawH);
-            } else {
-                // Fallback: debug rectangle if image not yet loaded
-                ctx.fillStyle = "#000000";
-                ctx.fillRect(left, top, drawW, drawH);
-            }
-        }
-
-        ctx.restore();
-    }
 
     function renderWave() {
         const w = canvas.width;
@@ -938,7 +761,9 @@
         }
 
         computeTerrainAndCollide(dt);
-        updateSpikes(dt);
+        if (window.SpikeSystem && SpikeSystem.update) {
+            SpikeSystem.update(dt, terrainProfile, player, PLAYER_SIZE, canvas.width);
+        }
 
         // Trick timing + glide scoring
         if (currentTrick) {
@@ -1105,7 +930,9 @@
         // Then draw the wave line itself on top
         renderWave();
 
-        drawSpikes();
+        if (window.SpikeSystem && SpikeSystem.draw) {
+            SpikeSystem.draw(ctx, terrainProfile);
+        }
 
         // player
         const cx = player.x + PLAYER_SIZE / 2;
@@ -1265,16 +1092,16 @@
 
             // Label
             ctx.font = "bold 40px 'Trebuchet MS', 'Segoe UI', system-ui, sans-serif";
-            ctx.fillText("GAME OVER", w / 2, h * 0.30);
+            ctx.fillText("GAME OVER", w / 2, h * 0.39 - 90);
 
             // Huge bold final score
             const finalScoreText = Math.floor(score).toString();
-            ctx.font = "bold 110px 'Trebuchet MS', 'Segoe UI', system-ui, sans-serif";
-            ctx.fillText(finalScoreText, w / 2, h * 0.47);
+            ctx.font = "bold 96px 'Trebuchet MS', 'Segoe UI', system-ui, sans-serif";
+            ctx.fillText(finalScoreText, w / 2, h * 0.39);
 
             // Instruction
-            ctx.font = "22px 'Courier New', monospace";
-            ctx.fillText("Press R to restart", w / 2, h * 0.47 + 70);
+            ctx.font = "20px 'Courier New', monospace";
+            ctx.fillText("Press R to restart", w / 2, h * 0.39 + 60);
 
             ctx.restore();
         }
@@ -1506,6 +1333,27 @@
 
     resizeCanvas();
     createPlayer();
+
+    // Init spike / boat system
+    if (window.SpikeSystem && SpikeSystem.init) {
+        SpikeSystem.init({
+            jumpVelocity: JUMP_VELOCITY,
+            onHit: () => {
+                if (isGameOver) return;
+                isGameOver = true;
+
+                // same behaviour you had in handleSpikeHit
+                if (window.SurfAudio) {
+                    if (SurfAudio.playCrash) {
+                        SurfAudio.playCrash();
+                    }
+                    if (SurfAudio.pause) {
+                        SurfAudio.pause();
+                    }
+                }
+            },
+        });
+    }
 
     window.addEventListener("resize", () => {
         resizeCanvas();
