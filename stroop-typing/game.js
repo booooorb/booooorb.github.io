@@ -26,7 +26,7 @@
 
   let current = null; // { word: string, ink: {name,hex,...} }
 
-  let correctCharCount = 0; 
+  let correctCharCount = 0;
   let correctWords = 0;
   let totalWords = 0;
 
@@ -44,15 +44,16 @@
   }
 
   function pickPrompt() {
-    const word = bank.rand(bank.WORDS);        // "RED"
-    const wordName = word.toLowerCase();       // "red"
+    const ink = bank.rand(bank.COLORS);
 
-    let ink;
+    let word;
     if (mode === "congruent") {
-      ink = bank.COLORS.find(c => c.name === wordName) || bank.rand(bank.COLORS);
+      word = bank.pickAssociatedWord(ink.name);
     } else {
-      ink = bank.randDifferentColor(wordName);
+      const other = bank.randDifferentColor(ink.name);
+      word = other.name.toUpperCase();
     }
+
     return { word, ink };
   }
 
