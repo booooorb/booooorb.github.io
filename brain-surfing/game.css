@@ -109,28 +109,34 @@ body {
 
 .hud-title {
   font-weight: bold;
-  margin-bottom: 4px;
+  margin-bottom: 6px;
 }
 
+/* ---------- Bigger buttons ---------- */
 .dataset-buttons {
   display: flex;
   flex-wrap: wrap;
-  gap: 4px;
-    font-family: "Courier New", ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas,
+  gap: 10px;
+  /* was 4px */
+  font-family: "Courier New", ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas,
     "Liberation Mono", "Courier", monospace;
 }
 
 .dataset-buttons button,
 .upload-label span {
-  font-size: 11px;
-  padding: 2px 6px;
-  border-radius: 3px;
+  font-size: 16px;
+  /* was 11px */
+  padding: 10px 14px;
+  /* was 2px 6px */
+  min-height: 44px;
+  /* touch-friendly */
+  border-radius: 8px;
+  /* was 3px */
   border: 1px solid #aaa;
   background: #222;
   color: #f4f4f4;
   cursor: pointer;
-    font-family: "Courier New", ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas,
-    "Liberation Mono", "Courier", monospace;
+  font-family: inherit;
 }
 
 .dataset-buttons button:hover,
@@ -143,15 +149,43 @@ body {
   cursor: pointer;
 }
 
+/* ---------- Channel dropdown ---------- */
+#channel-controls {
+  margin-top: 10px;
+}
+
+.channel-select-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.channel-select-label {
+  font-size: 14px;
+  font-weight: bold;
+}
+
+.channel-select {
+  font-size: 16px;
+  padding: 10px 12px;
+  min-height: 44px;
+  border-radius: 8px;
+  border: 1px solid #aaa;
+  background: #222;
+  color: #f4f4f4;
+  font-family: inherit;
+}
+
 #info-toggle {
-  margin-top: 4px;
-  margin-bottom: 4px;
-  padding: 2px 8px;
-  font-size: 11px;
+  margin-top: 6px;
+  margin-bottom: 6px;
+  padding: 10px 14px;
+  font-size: 16px;
   font-family: "Courier New", ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas,
     "Liberation Mono", "Courier", monospace;
 
-  border-radius: 4px;
+  min-height: 44px;
+  border-radius: 8px;
   border: 1px solid #aaa;
   background: #222;
   color: #f4f4f4;
@@ -163,17 +197,17 @@ body {
 }
 
 #eeg-info {
-  padding: 8px 10px;
-  border-radius: 4px;
-  margin-top: 2px;
+  padding: 10px 12px;
+  border-radius: 8px;
+  margin-top: 30px;
 
-  font-size: 11px;
-  line-height: 1.3;
+  font-size: 12px;
+  line-height: 1.35;
 
   background: rgba(255, 255, 255, 0.15);
   color: #000000;
 
-  max-height: 300px;
+  max-height: 320px;
   max-width: 360px;
   overflow: hidden;
   transition:
@@ -188,4 +222,26 @@ body {
   opacity: 0;
   padding-top: 0;
   padding-bottom: 0;
+}
+
+.dataset-buttons {
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 10px;
+}
+
+.dataset-buttons button,
+.upload-label span {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.channel-select-row {
+  flex-wrap: wrap;
+}
+
+.channel-select {
+  flex: 1 1 180px;
+  max-width: 100%;
 }

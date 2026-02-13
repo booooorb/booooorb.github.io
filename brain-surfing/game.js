@@ -16,6 +16,16 @@
     const HORIZONTAL_SAMPLE_STEP = 0.3;
     const AMP_SCALE = 1.5;
 
+    const channelControlsEl = document.getElementById("channel-controls");
+
+    let currentChannelName = null;
+    let lastEEGJson = null;          // cache last loaded EEG json so we can re-pick channel
+    let availableChannels = [];      // names shown as buttons
+
+    let lastUploadedEdfBuffer = null;
+    let currentEdfChannelIndex = 14; // your Python default
+    let edfChannelLabels = [];
+
     const playerImg = new Image();
     let playerImgLoaded = false;
     playerImg.src = "character2.png";
@@ -81,21 +91,21 @@
             eegUrl: "brainwave_runner_sleep.json",
             stagesUrl: "brainwave_stages_sleep.json",
             hasStages: true,
-            channel: "Fpz-Cz",
+            defaultChannel: "Fpz-Cz",
         },
         seizure: {
             label: "Seizure (demo)",
             eegUrl: "brainwave_runner_seizure.json",
             stagesUrl: "brainwave_stages_seizure.json",
             hasStages: true,
-            channel: "Cz",
+            defaultChannel: "Cz",
         },
         user: {
             label: "User upload",
             eegUrl: null,   // loaded from <input type="file">
             stagesUrl: null,
             hasStages: false,
-            channel: null,
+            defaultChannel: null,
         },
     };
 
@@ -336,10 +346,91 @@
         startFlipTrick();
     }
 
+    function getChannelsMapFromJson(data) {
+        // support either {channels: {name: [...]}} or {valuesByChannel: {name: [...]}}
+        if (data && data.channels && typeof data.channels === "object") return data.channels;
+        if (data && data.valuesByChannel && typeof data.valuesByChannel === "object") return data.valuesByChannel;
+        return null;
+    }
+
+    function renderEdfChannelButtons() {
+        if (!channelControlsEl) return;
+
+        if (!edfChannelLabels || edfChannelLabels.length <= 1) {
+            channelControlsEl.innerHTML = "";
+            return;
+        }
+
+        channelControlsEl.innerHTML = edfChannelLabels
+            .map((lab, idx) => {
+                const name = (lab && lab.trim()) ? lab.trim() : `Ch ${idx}`;
+                const active = idx === currentEdfChannelIndex ? "active" : "";
+                return `<button class="${active}" data-edf-ch="${idx}">${name}</button>`;
+            })
+            .join("");
+    }
+
+    function renderChannelDropdown() {
+        if (!channelControlsEl) return;
+
+        const isUserEdf = (currentDatasetKey === "user" && lastUploadedEdfLabels && lastUploadedEdfBuffer);
+
+        // Labels come from EDF upload (preferred) or from JSON channel names
+        const labels = isUserEdf ? lastUploadedEdfLabels : availableChannels;
+
+        if (!labels || labels.length <= 1) {
+            channelControlsEl.innerHTML = "";
+            return;
+        }
+
+        const optionsHtml = labels.map((lab, idx) => {
+            const value = isUserEdf ? String(idx) : String(lab);
+            const selected = isUserEdf
+                ? (idx === currentEdfChannelIndex)
+                : (lab === currentChannelName);
+
+            return `<option value="${value}" ${selected ? "selected" : ""}>${lab}</option>`;
+        }).join("");
+
+        channelControlsEl.innerHTML = `
+    <div class="channel-select-row">
+      <label class="channel-select-label" for="channel-select">Channel</label>
+      <select id="channel-select" class="channel-select">
+        ${optionsHtml}
+      </select>
+    </div>
+  `;
+    }
+
+
 
     function initEEGFromJson(data) {
         eegSampleRate = data.sampleRate || 50;
-        const raw = Array.isArray(data.values) ? data.values : [];
+        const chMap = getChannelsMapFromJson(data);
+        if (chMap) {
+            availableChannels = Object.keys(chMap);
+
+            // If we don’t have a valid current channel yet, pick first
+            if (!currentChannelName || !chMap[currentChannelName]) {
+                currentChannelName = availableChannels[0] || null;
+            }
+        } else {
+            if (Array.isArray(data.channelLabels) && data.channelLabels.length > 1) {
+                availableChannels = data.channelLabels.slice();
+                currentChannelName = data.channelLabel || availableChannels[0] || null;
+                currentEdfChannelIndex = Number.isFinite(data.channelIndex) ? data.channelIndex : currentEdfChannelIndex;
+            } else {
+                availableChannels = [];
+                if (!currentChannelName) currentChannelName = data.channel || null;
+            }
+        }
+        renderChannelDropdown();
+
+        const raw = chMap
+            ? (Array.isArray(chMap[currentChannelName]) ? chMap[currentChannelName] : [])
+            : (Array.isArray(data.values) ? data.values : []);
+
+        if (!raw.length) throw new Error("JSON has empty values array for selected channel");
 
         if (!raw.length) throw new Error("JSON has empty values array");
 
@@ -372,12 +463,15 @@
         ].join("<br>");
 
         console.log("EEG data loaded:", eegLength, "samples at", eegSampleRate, "Hz");
+
+        renderChannelDropdown();
     }
 
     function loadEEGFromUrl(url) {
         statusEl.textContent = "EEG: loading…";
         statusEl.style.background = "rgba(0,0,0,0.6)";
         eegReady = false;
+        if (window.SpikeSystem && SpikeSystem.reset) SpikeSystem.reset();
 
         fetch(url)
             .then((res) => {
@@ -385,6 +479,7 @@
                 return res.json();
             })
             .then((data) => {
+                lastEEGJson = data;
                 initEEGFromJson(data);
             })
             .catch((err) => {
@@ -455,7 +550,17 @@
 
     function loadDataset() {
         const conf = DATASETS[currentDatasetKey];
+        currentChannelName = conf?.defaultChannel || currentChannelName;
         if (!conf) return;
+        if (currentDatasetKey === "user") {
+            eegReady = false;
+            statusEl.textContent = "EEG: upload an EDF to start";
+            statusEl.style.background = "rgba(0,0,0,0.6)";
+
+            // Clear any existing obstacles immediately
+            if (window.SpikeSystem && SpikeSystem.reset) SpikeSystem.reset();
+            return;
+        }
 
         console.log("Loading dataset:", currentDatasetKey, conf.label);
 
@@ -761,7 +866,7 @@
         }
 
         computeTerrainAndCollide(dt);
-        if (window.SpikeSystem && SpikeSystem.update) {
+        if (eegReady && window.SpikeSystem && SpikeSystem.update) {
             SpikeSystem.update(dt, terrainProfile, player, PLAYER_SIZE, canvas.width);
         }
 
@@ -930,7 +1035,7 @@
         // Then draw the wave line itself on top
         renderWave();
 
-        if (window.SpikeSystem && SpikeSystem.draw) {
+        if (eegReady && window.SpikeSystem && SpikeSystem.draw) {
             SpikeSystem.draw(ctx, terrainProfile);
         }
 
@@ -1049,7 +1154,7 @@
                 stageText = "Stage: " + stagePretty(currentStageCode);
             }
             const timeText = "EDF time: " + formatClock(lastEffectiveTime);
-            const channelText = "Channel: " + (conf && conf.channel ? conf.channel : "N/A");
+            const channelText = "Channel: " + (currentChannelName || "N/A");
 
             ctx.save();
             ctx.textAlign = "center";
@@ -1241,6 +1346,69 @@
         pressInAir = false;
     }
 
+    if (channelControlsEl) {
+        channelControlsEl.addEventListener("click", (e) => {
+            const btn = e.target.closest("button[data-channel]");
+            if (!btn) return;
+
+            const ch = btn.getAttribute("data-channel");
+            if (!ch || ch === currentChannelName) return;
+
+            currentChannelName = ch;
+
+            // re-init EEG arrays from cached JSON (no refetch needed)
+            if (lastEEGJson) {
+                initEEGFromJson(lastEEGJson);
+            }
+
+            // refresh active styling
+            renderChannelButtons();
+        });
+    }
+
+    if (channelControlsEl) {
+        channelControlsEl.addEventListener("change", (e) => {
+            const sel = e.target.closest("#channel-select");
+            if (!sel) return;
+
+            const isUserEdf = (currentDatasetKey === "user" && lastUploadedEdfBuffer && lastUploadedEdfLabels);
+
+            // EDF: re-parse the same uploaded file with a new channelIndex
+            if (isUserEdf) {
+                const idx = parseInt(sel.value, 10);
+                if (!Number.isFinite(idx) || idx < 0 || idx >= lastUploadedEdfLabels.length) return;
+
+                currentEdfChannelIndex = idx;
+
+                try {
+                    const json = window.parseEdfToJson(lastUploadedEdfBuffer, {
+                        channelIndex: idx,
+                        targetRate: 50,
+                    });
+
+                    EEG_START_OFFSET_SEC = Number.isFinite(json.startTimeSec) ? json.startTimeSec : 0;
+                    lastEffectiveTime = EEG_START_OFFSET_SEC;
+
+                    DATASETS.user.channel = json.channelLabel || "N/A";
+                    initEEGFromJson(json);
+
+                    statusEl.textContent = `EEG: user EDF loaded (${json.channelLabel || "channel"})`;
+                    statusEl.style.background = "rgba(0,128,0,0.7)";
+                } catch (err) {
+                    console.error("Failed to re-parse EDF channel:", err);
+                    statusEl.textContent = "EEG: EDF channel parse error";
+                    statusEl.style.background = "rgba(128,0,0,0.7)";
+                }
+                return;
+            }
+
+            // JSON multi-channel: just switch channel name and re-init from cached JSON
+            currentChannelName = sel.value;
+            if (lastEEGJson) initEEGFromJson(lastEEGJson);
+        });
+    }
+
+
     window.addEventListener("keydown", (e) => {
         if (isPrimaryKey(e)) {
             e.preventDefault();
@@ -1300,6 +1468,7 @@
     }
 
     // file input for user JSON
+    // file input for user EDF
     if (uploadInput) {
         uploadInput.addEventListener("change", (e) => {
             const file = e.target.files[0];
@@ -1308,26 +1477,41 @@
             const reader = new FileReader();
             reader.onload = (ev) => {
                 try {
-                    const json = JSON.parse(ev.target.result);
+                    const buf = ev.target.result;
+                    lastUploadedEdfBuffer = buf;
+
+                    const json = window.parseEdfToJson(buf, { channelIndex: currentEdfChannelIndex, targetRate: 50 });
+
+                    lastUploadedEdfLabels = json.channelLabels || null;
+                    currentEdfChannelIndex = Number.isFinite(json.channelIndex) ? json.channelIndex : currentEdfChannelIndex;
+
+                    EEG_START_OFFSET_SEC = Number.isFinite(json.startTimeSec) ? json.startTimeSec : 0;
+                    lastEffectiveTime = EEG_START_OFFSET_SEC;
 
                     currentDatasetKey = "user";
                     initEEGFromJson(json);
 
-                    // No stages for user upload (for now)
-                    sleepSegments = [];
-                    currentStageCode = null;
-                    EEG_START_OFFSET_SEC = 0;
-                    lastEffectiveTime = 0;
+                    // draw channel dropdown now that we have labels
+                    renderChannelDropdown();
 
-                    statusEl.textContent = "EEG: user upload loaded";
+
+                    // optional: clear sleep stages for user uploads
+                    sleepSegments = [];
+                    currentStage = null;
+
+                    statusEl.textContent = `EEG: user EDF loaded (${json.channelLabel || "channel"})`;
                     statusEl.style.background = "rgba(0,128,0,0.7)";
                 } catch (err) {
-                    console.error("Failed to parse uploaded JSON:", err);
-                    statusEl.textContent = "EEG: upload parse error";
+                    console.error("Failed to parse uploaded EDF:", err);
+                    statusEl.textContent = "EEG: EDF parse error";
                     statusEl.style.background = "rgba(128,0,0,0.7)";
+                } finally {
+                    // allow re-uploading the same file
+                    uploadInput.value = "";
                 }
             };
-            reader.readAsText(file);
+
+            reader.readAsArrayBuffer(file);
         });
     }
 

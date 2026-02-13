@@ -1,0 +1,73 @@
+<!doctype html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Stroop Type</title>
+    <link rel="stylesheet" href="game.css" />
+</head>
+
+<body>
+    <main class="app">
+        <header class="top">
+            <div class="left">
+                <div class="title">strooptype</div>
+                <div class="sub">Type the <b>INK COLOR</b> (not the word). Press <b>Space</b> or <b>Enter</b> to submit.
+                </div>
+            </div>
+
+            <div class="right">
+                <div class="stat">
+                    <div class="label">time</div>
+                    <div class="value"><span id="timeLeft">30</span>s</div>
+                </div>
+                <div class="stat">
+                    <div class="label">wpm</div>
+                    <div class="value" id="wpm">0</div>
+                </div>
+            </div>
+        </header>
+
+        <section class="bar">
+            <div class="modes">
+                <button id="modeCongruent" class="btn active" type="button">word == color</button>
+                <button id="modeIncongruent" class="btn" type="button">word ≠ color</button>
+            </div>
+
+            <div class="actions">
+                <button id="restart" class="btn" type="button">restart</button>
+            </div>
+        </section>
+
+        <section class="stage">
+            <div id="stimulus" class="stimulus">click restart or start typing…</div>
+
+            <div class="inputRow">
+                <span class="prompt">></span>
+
+                <div class="inputWrap">
+                    <div id="typedOverlay" class="typedOverlay" aria-hidden="true"></div>
+                    <input id="answer" class="answer" type="text" inputmode="text" autocomplete="off" spellcheck="false"
+                        placeholder="red / blue / green …" />
+                </div>
+            </div>
+
+            <div id="mini" class="mini"></div>
+        </section>
+
+        <section class="anim">
+            <canvas id="stroopArena" class="arena"></canvas>
+        </section>
+
+        <footer class="foot">
+            <div>Keys: <b>Space</b>/<b>Enter</b> submit • <b>Esc</b> restart</div>
+        </footer>
+    </main>
+
+    <script src="wordbank.js"></script>
+    <script src="animation.js"></script>
+    <script src="game.js"></script>
+</body>
+
+</html>

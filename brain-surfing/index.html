@@ -25,10 +25,11 @@
           <button type="button" data-dataset="seizure">Seizure</button>
 
           <label class="upload-label">
-            <span>Upload JSON</span>
-            <input type="file" id="eeg-upload-input" accept=".json" style="display: none;" />
+            <span>Upload EDF</span>
+            <input type="file" id="eeg-upload-input" accept=".edf,.EDF" style="display: none;" />
           </label>
         </div>
+        <div id="channel-controls" class="channel-buttons"></div>
       </div>
 
       <div class="hud hud-top-right">
@@ -39,7 +40,7 @@
         </button>
 
         <div id="eeg-info">
-          
+
         </div>
       </div>
     </main>
@@ -47,6 +48,7 @@
 
   <script src="surfAudio.js"></script>
   <script src="spikes.js"></script>
+  <script src="edfToJson.js"></script>
   <script src="game.js"></script>
 </body>
 

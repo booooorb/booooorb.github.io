@@ -263,7 +263,7 @@
 
             ctx.save();
             ctx.imageSmoothingEnabled = false; 
-            ctx.globalAlpha = 0.7;            // semi-transparent
+            ctx.globalAlpha = 1;            // semi-transparent
 
             for (const s of this.spikes) {
                 const cfg = BOAT_CONFIGS[s.boatIndex];
