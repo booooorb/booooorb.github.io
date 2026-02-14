@@ -9,9 +9,9 @@
     let cx = 0, cy = 0, R = 0;
 
     const balls = [];
-    const MAX_BALLS = 35;
+    const MAX_BALLS = 100;
 
-    const GRAVITY = 450;        // px/s^2
+    const GRAVITY = 220;        // px/s^2
     const AIR = 1;          // damping
     const RESTITUTION = 1;   // wall bounce
     const BALL_RESTITUTION = 1;
@@ -28,7 +28,7 @@
 
         cx = W / 2;
         cy = H / 2;
-        R = Math.min(W, H) * 0.43; 
+        R = Math.min(W, H) * 0.43;
 
         for (const b of balls) {
             const dx = b.x - cx;
@@ -52,18 +52,19 @@
     function spawnBall(colorHex) {
         while (balls.length >= MAX_BALLS) balls.shift();
 
-        const r = rand(8, 14);
+        const r = rand(7, 9);
         const angle = rand(0, Math.PI * 2);
 
         const spawnRadius = rand(0, Math.max(1, R * 0.15));
         const x = cx + Math.cos(angle) * spawnRadius;
         const y = cy + Math.sin(angle) * spawnRadius;
 
-        const speed = rand(180, 340);
-        const vx = Math.cos(angle + Math.PI / 2) * speed; 
-        const vy = Math.sin(angle + Math.PI / 2) * speed - rand(80, 160);
+        const speed = rand(100, 140);
+        const vx = Math.cos(angle + Math.PI / 2) * speed;
+        const vy = Math.sin(angle + Math.PI / 2) * speed - rand(90, 130);
 
-        balls.push({ x, y, vx, vy, r, color: colorHex });
+        balls.push({ x, y, vx, vy, r, color: colorHex, lastWallSound: 0 });
+
     }
 
     function resolveBallCollisions() {
@@ -107,12 +108,27 @@
             const nx = dx / dist;
             const ny = dy / dist;
 
+            const dot = b.vx * nx + b.vy * ny;
+
             b.x = cx + nx * (R - b.r);
             b.y = cy + ny * (R - b.r);
 
-            const dot = b.vx * nx + b.vy * ny;
             b.vx = (b.vx - 2 * dot * nx) * RESTITUTION;
             b.vy = (b.vy - 2 * dot * ny) * RESTITUTION;
+
+            const now = performance.now();
+
+            if (dot > 40 && now - b.lastWallSound > 60) {
+                b.lastWallSound = now;
+
+                window.StroopSound?.wallBounce({
+                    cx,
+                    cy,
+                    hitX: b.x,
+                    hitY: b.y,
+                    impact: dot
+                });
+            }
         }
     }
 

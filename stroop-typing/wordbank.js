@@ -17,7 +17,7 @@
     yellow: ["CHEESE", "BANANA", "LEMON", "EGG"],
     purple: ["GRAPE", "HIPPO", "AMETHYST", "LAVENDER"],
     orange: ["CARROT", "PUMPKIN", "TIGER", "SUNSET"],
-    pink:   ["FLAMINGO", "BLOSSOM", "COTTONCANDY", "PIG"],
+    pink:   ["FLAMINGO", "BLOSSOM", "CANDY", "PIG"],
     brown:  ["COFFEE", "WOOD", "CHOCOLATE", "DIRT"],
   };
 

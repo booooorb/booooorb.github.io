@@ -57,9 +57,17 @@
     return { word, ink };
   }
 
+function flashStimulus() {
+  stimulusEl.classList.remove("quick-fade-in");
+  requestAnimationFrame(() => {
+    stimulusEl.classList.add("quick-fade-in");
+  });
+}
+
   function renderPrompt(p) {
     stimulusEl.textContent = p.word;
     stimulusEl.style.color = p.ink.hex;
+    flashStimulus();
   }
 
   function resetHUD() {
@@ -145,6 +153,7 @@
 
     stimulusEl.style.color = "";
     stimulusEl.textContent = finalMsg || "done";
+    flashStimulus()
 
     wpmEl.textContent = String(calcWPM());
   }
@@ -248,6 +257,7 @@
   });
 
   // Init
+  window.StroopSound?.arm?.();
   resetHUD();
   setMode("congruent");
   restart();
