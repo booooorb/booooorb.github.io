@@ -5,13 +5,13 @@
   <meta charset="utf-8" />
   <title>Brain Surfing</title>
   <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <link rel="stylesheet" href="game.css" />
+  <link rel="stylesheet" href="src/game.css" />
 </head>
 
 <body>
   <div class="wrapper">
     <header class="top-bar">
-      <a href="../" class="back-link">← back</a>
+      <a href="../" class="back-link">&larr; back</a>
       <div class="title">Brainwave Surfing</div>
     </header>
 
@@ -30,26 +30,31 @@
           </label>
         </div>
         <div id="channel-controls" class="channel-buttons"></div>
-      </div>
-
-      <div class="hud hud-top-right">
-        <div id="eeg-status">EEG: loading…</div>
 
         <button id="info-toggle" type="button">
-          EEG info ▾
+          EEG info v
         </button>
 
-        <div id="eeg-info">
-
-        </div>
+        <div id="eeg-info"></div>
       </div>
+
+      <div id="eeg-status">EEG: loading...</div>
+
+      <aside class="hud hud-bottom-left instructions-panel" id="controls-panel">
+        <div class="hud-title">How To Surf</div>
+        <p><strong>Jump:</strong> press <kbd>Space</kbd>, <kbd>W</kbd>, or <kbd>Up</kbd>. Tap/click also works.</p>
+        <p><strong>Glide:</strong> hold the same input while you are in the air.</p>
+        <p><strong>Flip:</strong> tap and release in the air for a quick trick.</p>
+        <p><strong>Restart:</strong> press <kbd>R</kbd> after a crash.</p>
+      </aside>
     </main>
   </div>
 
-  <script src="surfAudio.js"></script>
-  <script src="spikes.js"></script>
-  <script src="edfToJson.js"></script>
-  <script src="game.js"></script>
+  <script src="src/config/config.js"></script>
+  <script src="src/audio/surfAudio.js"></script>
+  <script src="src/systems/spikes.js"></script>
+  <script src="src/data/edfToJson.js"></script>
+  <script src="src/game.js"></script>
 </body>
 
 </html>

@@ -15,7 +15,7 @@
 
   // Root "Do"
   const ROOT_HZ = 261.63; // C4
-  const MASTER_VOL = 0.13;
+  const MASTER_VOL = 0.3;
 
   let idx = 0;        
   let dir = +1;       // +1 going up, -1 going down
