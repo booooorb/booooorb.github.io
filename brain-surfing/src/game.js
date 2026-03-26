@@ -22,7 +22,7 @@
             sourceLabel: "Sleep-EDF Expanded",
             sourceUrl: "https://www.physionet.org/content/sleep-edfx/1.0.0/",
             sourceDetail: "Sleep cassette example SC4001E0-PSG.edf",
-            originalSampleRate: "100 Hz EEG/EOG",
+            originalSampleRate: "100 Hz",
             summary: "Overnight polysomnography from PhysioNet's Sleep-EDF Expanded collection.",
             notes: [
                 "Default gameplay channel uses Fpz-Cz from the source recording.",
@@ -34,7 +34,7 @@
             badge: "Seizure demo",
             sourceLabel: "Siena Scalp EEG Database",
             sourceUrl: "https://www.physionet.org/content/siena-scalp-eeg/1.0.0/",
-            sourceDetail: "Scalp EEG recordings from 14 patients",
+            sourceDetail: "Patient 12, recording 3",
             originalSampleRate: "512 Hz",
             summary: "Clinical scalp EEG from the University of Siena, published on PhysioNet.",
             notes: [
@@ -76,6 +76,17 @@
     const BG_SCROLL_SPEED = 20;
     const MAX_AIR_TILT = Math.PI / 6;
     const MAX_DT = 0.1;
+    const SCORE_ROLL_DURATION = 0.28;
+    const SCORE_ROLL_OFFSET = 28;
+    const SCORE_FLASH_DURATION = 0.35;
+    const GAME_OVER_FADE_DURATION = 0.4;
+    const GAME_OVER_FADE_DELAY = 0.5;
+    const SHATTER_GRAVITY = 2200;
+    const SHATTER_BLAST_SPEED = 440;
+    const SHATTER_SPIN_SPEED = 18;
+    const SHATTER_TILE_SIZE = 6;
+    const SHATTER_SOURCE_SIZE = PLAYER_SIZE + 96;
+    const SHATTER_WIND_ACCEL = -420;
 
     const state = {
         datasetKey: "sleep",
@@ -115,6 +126,21 @@
         lastTime: performance.now(),
         bgScale: 0.25,
         bgScrollX: 0,
+        loadingSpinAngle: 0,
+        isLoadingEeg: false,
+        gameOverFade: 0,
+        gameOverTimer: 0,
+        shatterPieces: [],
+        hidePlayer: false,
+        isTabPaused: false,
+        scoreRoll: {
+            active: false,
+            progress: 1,
+            fromDigit: "0",
+            toDigit: "0",
+            lastScoreInt: 0,
+        },
+        scoreFlash: 0,
     };
 
     const images = {
@@ -124,6 +150,7 @@
         flipPenguin: image(ASSETS.flipPenguin),
         glidePenguin: image(ASSETS.glidePenguin),
     };
+    const sessionHighScore = new window.SessionHighScore();
 
     if (dom.infoToggle && dom.info) {
         dom.infoToggle.addEventListener("click", () => {
@@ -310,6 +337,7 @@
     function loadEEGFromUrl(url) {
         setStatus("EEG: loading...", "rgba(0,0,0,0.6)");
         state.eegReady = false;
+        state.isLoadingEeg = true;
         window.SpikeSystem?.reset?.();
 
         fetch(url)
@@ -320,9 +348,11 @@
             .then((data) => {
                 state.lastEEGJson = data;
                 initEEGFromJson(data);
+                state.isLoadingEeg = false;
             })
             .catch((err) => {
                 console.error("Failed to load EEG data:", err);
+                state.isLoadingEeg = false;
                 setStatus("EEG: failed to load dataset", "rgba(128,0,0,0.7)");
             });
     }
@@ -362,6 +392,7 @@
 
         if (state.datasetKey === "user") {
             state.eegReady = false;
+            state.isLoadingEeg = false;
             state.sleepSegments = [];
             state.currentStageCode = null;
             setStatus("EEG: upload an EDF to start", "rgba(0,0,0,0.6)");
@@ -391,6 +422,153 @@
         };
     }
 
+    function drawCurrentPlayerSprite(targetCtx) {
+        const canFlipDraw =
+            images.flipBoard.complete &&
+            images.flipPenguin.complete &&
+            images.flipBoard.naturalWidth > 0 &&
+            images.flipPenguin.naturalWidth > 0;
+        const canGlideDraw = images.glidePenguin.complete && images.glidePenguin.naturalWidth > 0;
+
+        if (state.glideActive && canGlideDraw) {
+            targetCtx.drawImage(images.glidePenguin, -PLAYER_SIZE / 2, -PLAYER_SIZE / 2 - 30, PLAYER_SIZE + 10, PLAYER_SIZE + 23);
+            return;
+        }
+
+        if (state.flipAnimTimeLeft > 0 && canFlipDraw) {
+            targetCtx.drawImage(images.flipBoard, -PLAYER_SIZE / 2, -PLAYER_SIZE / 2, PLAYER_SIZE, PLAYER_SIZE);
+            targetCtx.save();
+            targetCtx.translate(0, -PLAYER_SIZE * 0.35);
+            targetCtx.rotate((1 - state.flipAnimTimeLeft / FLIP_DURATION) * 4 * Math.PI);
+            targetCtx.drawImage(images.flipPenguin, -PLAYER_SIZE / 2, -PLAYER_SIZE / 2, PLAYER_SIZE, PLAYER_SIZE);
+            targetCtx.restore();
+            return;
+        }
+
+        if (images.player.complete && images.player.naturalWidth > 0) {
+            targetCtx.drawImage(images.player, -PLAYER_SIZE / 2, -PLAYER_SIZE / 2, PLAYER_SIZE, PLAYER_SIZE);
+            return;
+        }
+
+        targetCtx.fillStyle = "#000";
+        targetCtx.fillRect(-PLAYER_SIZE / 2, -PLAYER_SIZE / 2, PLAYER_SIZE, PLAYER_SIZE);
+    }
+
+    function spriteTileHasPixels(data, width, sx, sy, sw, sh) {
+        for (let y = sy; y < sy + sh; y += 1) {
+            for (let x = sx; x < sx + sw; x += 1) {
+                if (data[(y * width + x) * 4 + 3] > 16) return true;
+            }
+        }
+        return false;
+    }
+
+    function capturePlayerSprite() {
+        const spriteCanvas = document.createElement("canvas");
+        spriteCanvas.width = SHATTER_SOURCE_SIZE;
+        spriteCanvas.height = SHATTER_SOURCE_SIZE;
+        const spriteCtx = spriteCanvas.getContext("2d");
+        if (!spriteCtx) return null;
+
+        spriteCtx.translate(SHATTER_SOURCE_SIZE / 2, SHATTER_SOURCE_SIZE / 2);
+        spriteCtx.rotate(state.player?.angle || 0);
+        drawCurrentPlayerSprite(spriteCtx);
+        return spriteCanvas;
+    }
+
+    function triggerGameOver() {
+        const p = state.player;
+        if (!p || state.isGameOver) return;
+
+        const spriteCanvas = capturePlayerSprite();
+        const spriteCtx = spriteCanvas?.getContext("2d");
+        const spriteData = spriteCtx?.getImageData(0, 0, SHATTER_SOURCE_SIZE, SHATTER_SOURCE_SIZE);
+        const pieces = [];
+        const centerX = p.x + PLAYER_SIZE / 2;
+        const centerY = p.y + PLAYER_SIZE / 2;
+
+        if (spriteData) {
+            const { data, width, height } = spriteData;
+            for (let sy = 0; sy < height; sy += SHATTER_TILE_SIZE) {
+                for (let sx = 0; sx < width; sx += SHATTER_TILE_SIZE) {
+                    const sw = Math.min(SHATTER_TILE_SIZE, width - sx);
+                    const sh = Math.min(SHATTER_TILE_SIZE, height - sy);
+                    if (!spriteTileHasPixels(data, width, sx, sy, sw, sh)) continue;
+
+                    const offsetX = sx + sw / 2 - width / 2;
+                    const offsetY = sy + sh / 2 - height / 2;
+                    const distance = Math.hypot(offsetX, offsetY) || 1;
+                    const blast = SHATTER_BLAST_SPEED * (0.55 + Math.random() * 0.9);
+                    const windPush = 280 + Math.random() * 220;
+
+                    pieces.push({
+                        source: spriteCanvas,
+                        sx,
+                        sy,
+                        sw,
+                        sh,
+                        x: centerX + offsetX,
+                        y: centerY + offsetY,
+                        vx: (offsetX / distance) * blast * 0.35 - windPush + (Math.random() - 0.5) * 60,
+                        vy: (offsetY / distance) * blast * 0.22 - (180 + Math.random() * 280),
+                        rotation: (Math.random() - 0.5) * 0.6,
+                        vr: (Math.random() - 0.5) * SHATTER_SPIN_SPEED,
+                    });
+                }
+            }
+        }
+
+        if (!pieces.length) {
+            for (let i = 0; i < 72; i += 1) {
+                const angle = (Math.PI * 2 * i) / 72 + (Math.random() - 0.5) * 0.1;
+                const blast = SHATTER_BLAST_SPEED * (0.5 + Math.random() * 0.8);
+                const windPush = 280 + Math.random() * 220;
+                pieces.push({
+                    source: null,
+                    sx: 0,
+                    sy: 0,
+                    sw: 6 + Math.random() * 6,
+                    sh: 6 + Math.random() * 6,
+                    x: centerX + (Math.random() - 0.5) * PLAYER_SIZE * 0.7,
+                    y: centerY + (Math.random() - 0.5) * PLAYER_SIZE * 0.7,
+                    vx: Math.cos(angle) * blast * 0.35 - windPush,
+                    vy: Math.sin(angle) * blast * 0.25 - (180 + Math.random() * 260),
+                    rotation: Math.random() * Math.PI * 2,
+                    vr: (Math.random() - 0.5) * SHATTER_SPIN_SPEED,
+                });
+            }
+        }
+
+        state.shatterPieces = pieces;
+        state.isGameOver = true;
+        state.hidePlayer = true;
+        state.gameOverFade = 0;
+        state.gameOverTimer = 0;
+        state.currentTrick = null;
+        state.trickTimer = 0;
+        state.trickLocked = true;
+        state.glideActive = false;
+        state.pressInAir = false;
+        state.primaryDown = false;
+        if (state.holdTimerId !== null) {
+            clearTimeout(state.holdTimerId);
+            state.holdTimerId = null;
+        }
+        p.vy = 0;
+        syncGameOverChrome();
+        window.SurfAudio?.playCrash?.();
+        window.SurfAudio?.pause?.();
+    }
+
+    function clearHeldInput() {
+        state.primaryDown = false;
+        state.pressInAir = false;
+        if (state.holdTimerId !== null) {
+            clearTimeout(state.holdTimerId);
+            state.holdTimerId = null;
+        }
+    }
+
     function resetGame() {
         createPlayer();
         state.eegTime = 0;
@@ -404,13 +582,69 @@
         state.trickLocked = false;
         state.flipAnimTimeLeft = 0;
         state.glideActive = false;
+        state.loadingSpinAngle = 0;
+        state.isLoadingEeg = false;
+        state.gameOverFade = 0;
+        state.gameOverTimer = 0;
+        state.shatterPieces = [];
+        state.hidePlayer = false;
+        clearHeldInput();
+        state.scoreRoll.active = false;
+        state.scoreRoll.progress = 1;
+        state.scoreRoll.fromDigit = "0";
+        state.scoreRoll.toDigit = "0";
+        state.scoreRoll.lastScoreInt = 0;
+        state.scoreFlash = 0;
         syncGameOverChrome();
         window.SpikeSystem?.reset?.();
     }
 
+    function smoothStep01(t) {
+        return t * t * (3 - 2 * t);
+    }
+
+    function triggerScoreFlash() {
+        state.scoreFlash = 1;
+    }
+
+    function updateScoreRoll(dt) {
+        const scoreInt = Math.floor(state.score);
+        const previousScoreInt = state.scoreRoll.lastScoreInt;
+        const currentText = scoreInt.toString();
+        const previousText = previousScoreInt.toString();
+        const currentLeadingDigit = currentText.charAt(0) || "0";
+        const previousLeadingDigit = previousText.charAt(0) || "0";
+
+        if (
+            scoreInt !== previousScoreInt &&
+            (currentText.length !== previousText.length || currentLeadingDigit !== previousLeadingDigit)
+        ) {
+            state.scoreRoll.active = true;
+            state.scoreRoll.progress = 0;
+            state.scoreRoll.fromDigit = previousLeadingDigit;
+            state.scoreRoll.toDigit = currentLeadingDigit;
+        }
+
+        state.scoreRoll.lastScoreInt = scoreInt;
+        sessionHighScore.update(scoreInt);
+
+        if (state.scoreRoll.active) {
+            state.scoreRoll.progress += dt / SCORE_ROLL_DURATION;
+            if (state.scoreRoll.progress >= 1) {
+                state.scoreRoll.progress = 1;
+                state.scoreRoll.active = false;
+                state.scoreRoll.fromDigit = state.scoreRoll.toDigit;
+            }
+        }
+
+        if (state.scoreFlash > 0) {
+            state.scoreFlash = Math.max(0, state.scoreFlash - dt / SCORE_FLASH_DURATION);
+        }
+    }
+
     function sampleEEG(index) {
         if (!state.eegReady || !state.eegLength) {
-            return Math.sin((index / (state.eegSampleRate || 50)) * Math.PI);
+            return 0;
         }
 
         let sum = 0;
@@ -436,7 +670,8 @@
         state.currentStageCode = state.sleepSegments[state.sleepIndex].stage;
     }
 
-    function computeTerrain(dt) {
+    function computeTerrain(dt, options = {}) {
+        const { trackPlayer = true, updateAudio = true } = options;
         const p = state.player;
         const baselineY = state.groundY;
         const width = canvas.width;
@@ -458,50 +693,53 @@
             state.terrainProfile[x] = Math.max(TOP_MARGIN, baselineY - amp * maxWaveHeight);
         }
 
-        const left = Math.max(0, Math.floor(p.x));
-        const right = Math.min(width - 1, Math.ceil(p.x + PLAYER_SIZE));
-        let contactY = null;
-        for (let i = left; i <= right; i += 1) {
-            const y = state.terrainProfile[i];
-            if (contactY === null || y < contactY) contactY = y;
-        }
-
-        if (contactY !== null && p.y + PLAYER_SIZE >= contactY - 4 && p.vy >= 0) {
-            p.y = contactY - PLAYER_SIZE;
-            p.vy = 0;
-            p.onGround = true;
-        } else {
-            p.onGround = false;
-        }
-
-        const centerIndex = Math.max(0, Math.min(width - 1, Math.round(p.x + PLAYER_SIZE / 2)));
-        const leftIdx = Math.max(0, centerIndex - 2);
-        const rightIdx = Math.min(width - 1, centerIndex + 2);
-        const targetAngle = Math.atan2(state.terrainProfile[rightIdx] - state.terrainProfile[leftIdx], rightIdx - leftIdx || 1);
-        if (p.onGround && Number.isFinite(targetAngle)) {
-            p.angle += (targetAngle - p.angle) * 0.25;
-            p.airBaseAngle = p.angle;
-        }
-
-        if (!wasOnGround && p.onGround) {
-            if (state.currentTrick === "flip" && state.trickTimer < FLIP_DURATION || state.currentTrick === "glide") {
-                state.score = Math.max(0, state.score - TRICK_FAIL_PENALTY);
-                spawnFloatingText("-1500", "red");
-                window.SurfAudio?.playCrash?.();
+        if (trackPlayer) {
+            const left = Math.max(0, Math.floor(p.x));
+            const right = Math.min(width - 1, Math.ceil(p.x + PLAYER_SIZE));
+            let contactY = null;
+            for (let i = left; i <= right; i += 1) {
+                const y = state.terrainProfile[i];
+                if (contactY === null || y < contactY) contactY = y;
             }
-            state.currentTrick = null;
-            state.trickTimer = 0;
-            state.trickLocked = false;
-            state.glideActive = false;
+
+            if (contactY !== null && p.y + PLAYER_SIZE >= contactY - 4 && p.vy >= 0) {
+                p.y = contactY - PLAYER_SIZE;
+                p.vy = 0;
+                p.onGround = true;
+            } else {
+                p.onGround = false;
+            }
+
+            const centerIndex = Math.max(0, Math.min(width - 1, Math.round(p.x + PLAYER_SIZE / 2)));
+            const leftIdx = Math.max(0, centerIndex - 2);
+            const rightIdx = Math.min(width - 1, centerIndex + 2);
+            const targetAngle = Math.atan2(state.terrainProfile[rightIdx] - state.terrainProfile[leftIdx], rightIdx - leftIdx || 1);
+            if (p.onGround && Number.isFinite(targetAngle)) {
+                p.angle += (targetAngle - p.angle) * 0.25;
+                p.airBaseAngle = p.angle;
+            }
+
+            if (!wasOnGround && p.onGround) {
+                if (state.currentTrick === "flip" && state.trickTimer < FLIP_DURATION || state.currentTrick === "glide") {
+                    state.score = Math.max(0, state.score - TRICK_FAIL_PENALTY);
+                    spawnFloatingText("-1500", "red");
+                    triggerScoreFlash();
+                    window.SurfAudio?.playCrash?.();
+                }
+                state.currentTrick = null;
+                state.trickTimer = 0;
+                state.trickLocked = false;
+                state.glideActive = false;
+            }
         }
 
         state.currentWaveAmp = (sampleEEG(headSample) + 1) / 2;
-        window.SurfAudio?.update?.(p.onGround, state.currentWaveAmp, state.currentTrick);
+        if (updateAudio) window.SurfAudio?.update?.(p.onGround, state.currentWaveAmp, state.currentTrick);
     }
 
-    function updateParticles(dt) {
+    function updateParticles(dt, emitTrail = true) {
         const p = state.player;
-        if (p.onGround) {
+        if (emitTrail && p.onGround && !state.shatterPieces.length) {
             for (let i = 0; i < 5; i += 1) {
                 state.particles.push({
                     x: p.x + PLAYER_SIZE * 0.25 + (Math.random() * 4 - 2),
@@ -529,6 +767,23 @@
         });
     }
 
+    function updateShatterPieces(dt) {
+        state.gameOverTimer += dt;
+        state.gameOverFade = Math.max(
+            0,
+            Math.min(1, (state.gameOverTimer - GAME_OVER_FADE_DELAY) / GAME_OVER_FADE_DURATION)
+        );
+
+        state.shatterPieces = state.shatterPieces.filter((piece) => {
+            piece.vx += SHATTER_WIND_ACCEL * dt;
+            piece.vy += SHATTER_GRAVITY * dt;
+            piece.x += piece.vx * dt;
+            piece.y += piece.vy * dt;
+            piece.rotation += piece.vr * dt;
+            return piece.y - piece.sh < canvas.height + 180;
+        });
+    }
+
     function updateTilt(dt) {
         const p = state.player;
         if (p.onGround) return;
@@ -539,7 +794,24 @@
     }
 
     function update(dt) {
-        if (!state.player || state.isGameOver) return;
+        if (!state.player) return;
+        if (state.isTabPaused) return;
+
+        if (state.isGameOver) {
+            const bgWidth = images.background.width * state.bgScale || 1;
+            state.bgScrollX = (state.bgScrollX + BG_SCROLL_SPEED * dt) % bgWidth;
+            computeTerrain(dt, { trackPlayer: false, updateAudio: false });
+            window.SpikeSystem?.update?.(dt, state.terrainProfile, { x: -9999, y: -9999 }, PLAYER_SIZE, canvas.width);
+            updateParticles(dt, false);
+            updateShatterPieces(dt);
+            updateScoreRoll(dt);
+            return;
+        }
+
+        if (state.isLoadingEeg) {
+            state.loadingSpinAngle += dt * 4.8;
+            return;
+        }
 
         state.score += dt * SCORE_SPEED;
 
@@ -581,6 +853,8 @@
         if (state.flipAnimTimeLeft > 0) {
             state.flipAnimTimeLeft = Math.max(0, state.flipAnimTimeLeft - dt);
         }
+
+        updateScoreRoll(dt);
     }
 
     function drawBackground() {
@@ -622,34 +896,42 @@
 
     function drawPlayer() {
         const p = state.player;
+        if (state.hidePlayer || state.isGameOver || state.shatterPieces.length) return;
         const cx = p.x + PLAYER_SIZE / 2;
         const cy = p.y + PLAYER_SIZE / 2;
         ctx.save();
         ctx.translate(cx, cy);
         ctx.rotate(p.angle || 0);
-
-        const canFlipDraw = images.flipBoard.complete && images.flipPenguin.complete && images.flipBoard.naturalWidth > 0 && images.flipPenguin.naturalWidth > 0;
-        const canGlideDraw = images.glidePenguin.complete && images.glidePenguin.naturalWidth > 0;
-
-        if (state.glideActive && canGlideDraw) {
-            ctx.drawImage(images.glidePenguin, -PLAYER_SIZE / 2, -PLAYER_SIZE / 2 - 30, PLAYER_SIZE + 10, PLAYER_SIZE + 23);
-        } else if (state.flipAnimTimeLeft > 0 && canFlipDraw) {
-            ctx.drawImage(images.flipBoard, -PLAYER_SIZE / 2, -PLAYER_SIZE / 2, PLAYER_SIZE, PLAYER_SIZE);
-            ctx.save();
-            ctx.translate(0, -PLAYER_SIZE * 0.35);
-            ctx.rotate((1 - state.flipAnimTimeLeft / FLIP_DURATION) * 4 * Math.PI);
-            ctx.drawImage(images.flipPenguin, -PLAYER_SIZE / 2, -PLAYER_SIZE / 2, PLAYER_SIZE, PLAYER_SIZE);
-            ctx.restore();
-        } else if (images.player.complete && images.player.naturalWidth > 0) {
-            ctx.drawImage(images.player, -PLAYER_SIZE / 2, -PLAYER_SIZE / 2, PLAYER_SIZE, PLAYER_SIZE);
-        } else {
-            ctx.fillStyle = "#000";
-            ctx.fillRect(-PLAYER_SIZE / 2, -PLAYER_SIZE / 2, PLAYER_SIZE, PLAYER_SIZE);
-        }
+        drawCurrentPlayerSprite(ctx);
         ctx.restore();
     }
 
     function drawEffects() {
+        ctx.save();
+        state.shatterPieces.forEach((piece) => {
+            ctx.save();
+            ctx.translate(piece.x, piece.y);
+            ctx.rotate(piece.rotation);
+            if (piece.source) {
+                ctx.drawImage(
+                    piece.source,
+                    piece.sx,
+                    piece.sy,
+                    piece.sw,
+                    piece.sh,
+                    -piece.sw / 2,
+                    -piece.sh / 2,
+                    piece.sw,
+                    piece.sh
+                );
+            } else {
+                ctx.fillStyle = "#000";
+                ctx.fillRect(-piece.sw / 2, -piece.sh / 2, piece.sw, piece.sh);
+            }
+            ctx.restore();
+        });
+        ctx.restore();
+
         ctx.save();
         ctx.globalAlpha = 0.35;
         ctx.fillStyle = "#000";
@@ -678,38 +960,125 @@
         ctx.font = "16px 'Courier New', monospace";
         ctx.fillText(`EDF time: ${formatClock(state.lastEffectiveTime)}`, canvas.width / 2, canvas.height * 0.39 + 70);
         ctx.fillText(`Channel: ${state.channelName || "N/A"}`, canvas.width / 2, canvas.height * 0.39 + 90);
+        ctx.font = "bold 16px 'Courier New', monospace";
+        ctx.fillText(`High score: ${sessionHighScore.get()}`, canvas.width / 2, canvas.height * 0.39 + 110);
         ctx.globalAlpha = 0.18;
         ctx.font = "bold 96px 'Trebuchet MS', 'Segoe UI', system-ui, sans-serif";
-        ctx.fillText(Math.floor(state.score).toString(), canvas.width / 2, canvas.height * 0.39);
+        ctx.fillStyle = getScoreDisplayColor();
+        drawRollingScore(canvas.width / 2, canvas.height * 0.39);
+        ctx.restore();
+    }
+
+    function getScoreDisplayColor() {
+        if (state.scoreFlash <= 0) return "#000";
+        const flash = smoothStep01(state.scoreFlash);
+        const red = Math.round(255 * flash);
+        const green = Math.round(78 * flash);
+        const blue = Math.round(78 * flash);
+        return `rgb(${red}, ${green}, ${blue})`;
+    }
+
+    function drawLoadingState() {
+        const centerX = canvas.width / 2;
+        const centerY = canvas.height * 0.39;
+
+        ctx.save();
+        ctx.translate(centerX, centerY);
+        ctx.rotate(state.loadingSpinAngle);
+
+        if (images.player.complete && images.player.naturalWidth > 0) {
+            ctx.drawImage(images.player, -PLAYER_SIZE / 2, -PLAYER_SIZE / 2, PLAYER_SIZE, PLAYER_SIZE);
+        } else {
+            ctx.fillStyle = "#000";
+            ctx.fillRect(-PLAYER_SIZE / 2, -PLAYER_SIZE / 2, PLAYER_SIZE, PLAYER_SIZE);
+        }
+        ctx.restore();
+
+        ctx.save();
+        ctx.textAlign = "center";
+        ctx.textBaseline = "middle";
+        ctx.fillStyle = "rgba(0, 0, 0, 0.72)";
+        ctx.font = "bold 26px 'Courier New', monospace";
+        ctx.fillText("Loading EEG...", centerX, centerY + 78);
+        ctx.font = "16px 'Courier New', monospace";
+        ctx.fillText("Preparing the wave for surfing", centerX, centerY + 108);
+        ctx.restore();
+    }
+
+    function drawRollingScore(x, y) {
+        const currentText = Math.floor(state.score).toString();
+        const currentDigit = currentText.charAt(0) || "0";
+        const currentRest = currentText.slice(1);
+        if (!state.scoreRoll.active) {
+            ctx.fillText(currentText, x, y);
+            return;
+        }
+
+        const t = smoothStep01(Math.max(0, Math.min(1, state.scoreRoll.progress)));
+        const outgoingY = y + SCORE_ROLL_OFFSET * t;
+        const incomingY = y - SCORE_ROLL_OFFSET * (1 - t);
+        const restText = currentRest;
+        const digitWidth = Math.max(
+            ctx.measureText(state.scoreRoll.fromDigit || currentDigit).width,
+            ctx.measureText(state.scoreRoll.toDigit || currentDigit).width
+        );
+        const restWidth = ctx.measureText(restText).width;
+        const totalWidth = digitWidth + restWidth;
+        const leftX = x - totalWidth / 2;
+
+        ctx.save();
+        ctx.textAlign = "left";
+        ctx.fillText(restText, leftX + digitWidth, y);
+        ctx.restore();
+
+        ctx.save();
+        ctx.textAlign = "left";
+        ctx.globalAlpha *= 1 - t;
+        ctx.fillText(state.scoreRoll.fromDigit, leftX, outgoingY);
+        ctx.restore();
+
+        ctx.save();
+        ctx.textAlign = "left";
+        ctx.globalAlpha *= t;
+        ctx.fillText(state.scoreRoll.toDigit || currentDigit, leftX, incomingY);
         ctx.restore();
     }
 
     function drawGameOver() {
+        const fade = smoothStep01(state.gameOverFade);
+
         ctx.save();
-        ctx.fillStyle = "rgba(0, 0, 0, 0.55)";
+        ctx.fillStyle = `rgba(0, 0, 0, ${0.55 * fade})`;
         ctx.fillRect(0, 0, canvas.width, canvas.height);
         ctx.textAlign = "center";
         ctx.textBaseline = "middle";
         ctx.fillStyle = "#fff";
+        ctx.globalAlpha = fade;
         ctx.font = "bold 40px 'Trebuchet MS', 'Segoe UI', system-ui, sans-serif";
-        ctx.fillText("GAME OVER", canvas.width / 2, canvas.height * 0.39 - 90);
+        ctx.fillText("GAME OVER", canvas.width / 2, canvas.height * 0.39 - 96 + (1 - fade) * 12);
         ctx.font = "bold 96px 'Trebuchet MS', 'Segoe UI', system-ui, sans-serif";
-        ctx.fillText(Math.floor(state.score).toString(), canvas.width / 2, canvas.height * 0.39);
+        ctx.fillText(Math.floor(state.score).toString(), canvas.width / 2, canvas.height * 0.39 + (1 - fade) * 8);
+        ctx.font = "bold 20px 'Courier New', monospace";
+        ctx.fillText(`High score: ${sessionHighScore.get()}`, canvas.width / 2, canvas.height * 0.39 + 58 + (1 - fade) * 8);
         ctx.font = "20px 'Courier New', monospace";
-        ctx.fillText("Press R to restart", canvas.width / 2, canvas.height * 0.39 + 60);
+        ctx.fillText("Press R to restart", canvas.width / 2, canvas.height * 0.39 + 86 + (1 - fade) * 10);
         ctx.restore();
     }
 
     function draw() {
         ctx.fillStyle = "#EAE7D9";
         ctx.fillRect(0, 0, canvas.width, canvas.height);
-        drawBackground();
-        drawWave();
-        window.SpikeSystem?.draw?.(ctx, state.terrainProfile);
-        drawPlayer();
-        drawEffects();
-        if (state.isGameOver) drawGameOver();
-        else drawHud();
+        if (state.isLoadingEeg) {
+            drawLoadingState();
+        } else {
+            drawBackground();
+            drawWave();
+            window.SpikeSystem?.draw?.(ctx, state.terrainProfile);
+            drawPlayer();
+            drawEffects();
+            if (state.isGameOver) drawGameOver();
+            else drawHud();
+        }
         syncGameOverChrome();
     }
 
@@ -795,6 +1164,7 @@
         state.sleepSegments = [];
         state.currentStageCode = null;
         initEEGFromJson(json);
+        state.isLoadingEeg = false;
         setStatus(`EEG: user EDF loaded (${json.channelLabel || "channel"})`, "rgba(0,128,0,0.7)");
     }
 
@@ -867,9 +1237,24 @@
         resizeCanvas();
         createPlayer();
     });
-    window.addEventListener("blur", () => window.SurfAudio?.pause?.());
+    window.addEventListener("blur", () => {
+        state.isTabPaused = true;
+        state.lastTime = performance.now();
+        clearHeldInput();
+        window.SurfAudio?.pause?.();
+    });
+    window.addEventListener("focus", () => {
+        if (document.hidden) return;
+        state.isTabPaused = false;
+        state.lastTime = performance.now();
+    });
     document.addEventListener("visibilitychange", () => {
-        if (document.hidden) window.SurfAudio?.pause?.();
+        state.isTabPaused = document.hidden;
+        state.lastTime = performance.now();
+        if (document.hidden) {
+            clearHeldInput();
+            window.SurfAudio?.pause?.();
+        }
     });
 
     resizeCanvas();
@@ -878,11 +1263,7 @@
     window.SpikeSystem?.init?.({
         jumpVelocity: JUMP_VELOCITY,
         onHit: () => {
-            if (state.isGameOver) return;
-            state.isGameOver = true;
-            syncGameOverChrome();
-            window.SurfAudio?.playCrash?.();
-            window.SurfAudio?.pause?.();
+            triggerGameOver();
         },
     });
     loadDataset();
