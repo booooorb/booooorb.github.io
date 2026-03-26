@@ -172,6 +172,12 @@
         if (background) dom.status.style.background = background;
     }
 
+    function restartEntranceAnimation() {
+        document.body.classList.remove("scene-enter");
+        void document.body.offsetWidth;
+        document.body.classList.add("scene-enter");
+    }
+
     function syncGameOverChrome() {
         document.body.classList.toggle("game-over", state.isGameOver);
     }
@@ -331,6 +337,7 @@
         state.eegReady = true;
         renderChannelDropdown();
         updateInfoPanel();
+        restartEntranceAnimation();
         setStatus(`EEG: wave loaded (${state.eegLength} samples @ ${state.eegSampleRate} Hz)`, "rgba(0,128,0,0.7)");
     }
 
@@ -595,6 +602,7 @@
         state.scoreRoll.toDigit = "0";
         state.scoreRoll.lastScoreInt = 0;
         state.scoreFlash = 0;
+        restartEntranceAnimation();
         syncGameOverChrome();
         window.SpikeSystem?.reset?.();
     }
@@ -1046,22 +1054,31 @@
 
     function drawGameOver() {
         const fade = smoothStep01(state.gameOverFade);
+        const centerX = canvas.width / 2;
+        const centerY = canvas.height * 0.39;
 
         ctx.save();
-        ctx.fillStyle = `rgba(0, 0, 0, ${0.55 * fade})`;
+        const overlayGradient = ctx.createLinearGradient(0, 0, 0, canvas.height);
+        overlayGradient.addColorStop(0, `rgba(12, 10, 10, ${0.32 * fade})`);
+        overlayGradient.addColorStop(0.45, `rgba(12, 10, 10, ${0.58 * fade})`);
+        overlayGradient.addColorStop(1, `rgba(12, 10, 10, ${0.8 * fade})`);
+        ctx.fillStyle = overlayGradient;
         ctx.fillRect(0, 0, canvas.width, canvas.height);
+        ctx.restore();
+
+        ctx.save();
         ctx.textAlign = "center";
         ctx.textBaseline = "middle";
-        ctx.fillStyle = "#fff";
         ctx.globalAlpha = fade;
+        ctx.fillStyle = "#fff";
         ctx.font = "bold 40px 'Trebuchet MS', 'Segoe UI', system-ui, sans-serif";
-        ctx.fillText("GAME OVER", canvas.width / 2, canvas.height * 0.39 - 96 + (1 - fade) * 12);
+        ctx.fillText("GAME OVER", centerX, centerY - 96 + (1 - fade) * 12);
         ctx.font = "bold 96px 'Trebuchet MS', 'Segoe UI', system-ui, sans-serif";
-        ctx.fillText(Math.floor(state.score).toString(), canvas.width / 2, canvas.height * 0.39 + (1 - fade) * 8);
+        ctx.fillText(Math.floor(state.score).toString(), centerX, centerY + (1 - fade) * 8);
         ctx.font = "bold 20px 'Courier New', monospace";
-        ctx.fillText(`High score: ${sessionHighScore.get()}`, canvas.width / 2, canvas.height * 0.39 + 58 + (1 - fade) * 8);
+        ctx.fillText(`High score: ${sessionHighScore.get()}`, centerX, centerY + 58 + (1 - fade) * 8);
         ctx.font = "20px 'Courier New', monospace";
-        ctx.fillText("Press R to restart", canvas.width / 2, canvas.height * 0.39 + 86 + (1 - fade) * 10);
+        ctx.fillText("Press R to restart", centerX, centerY + 86 + (1 - fade) * 10);
         ctx.restore();
     }
 
@@ -1266,6 +1283,7 @@
             triggerGameOver();
         },
     });
+    restartEntranceAnimation();
     loadDataset();
 
     requestAnimationFrame((timestamp) => {

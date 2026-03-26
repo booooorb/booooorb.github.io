@@ -16,12 +16,24 @@
     const BOAT_ROTATION_BLEND = 0.2;
     const BOAT_MAX_ANGLE = Math.PI / 8;
     const BOAT_MAX_ANGLE_STEP = Math.PI / 90;
-    const JUMPER_JUMP_COOLDOWN = 0;
+    const JUMPER_JUMP_COOLDOWN = 0.1;
+    const JUMPER_WIDTH_SCALE = 1.06;
+    const JUMPER_AIR_TILT_UP = -Math.PI / 3.8;
+    const JUMPER_AIR_TILT_DOWN = Math.PI / 4.2;
+    const SMOKE_INTERVAL = 0.075;
+    const SMOKE_LIFE_MIN = 0.35;
+    const SMOKE_LIFE_MAX = 0.7;
+    const TRAIL_INTERVAL = 0.04;
+    const TRAIL_LIFE_MIN = 0.4;
+    const TRAIL_LIFE_MAX = 0.7;
 
     const boatSources = global.BrainSurfingConfig?.assets?.boats || [];
     const BOAT_CONFIGS = boatSources.map((src, index) => ({
         src,
         scale: index === 5 ? 0.25 : index === 6 ? 0.3 : 1,
+        widthScale: index === 5 ? JUMPER_WIDTH_SCALE : 1,
+        emitsSmoke: index <= 4,
+        emitsTrail: index === 5,
     }));
 
     for (const cfg of BOAT_CONFIGS) {
@@ -35,8 +47,9 @@
         const naturalW = img?.naturalWidth || 32;
         const naturalH = img?.naturalHeight || 32;
         const scale = BOAT_BASE_SCALE * (cfg.scale ?? 1);
+        const widthScale = cfg.widthScale ?? 1;
         return {
-            drawW: naturalW * scale,
+            drawW: naturalW * scale * widthScale,
             drawH: naturalH * scale,
         };
     }
@@ -50,6 +63,8 @@
 
         reset() {
             this.spikes = [];
+            this.smoke = [];
+            this.trails = [];
             this.spikeTimer = SPIKE_INTERVAL_START;
             this.time = 0;
         },
@@ -71,6 +86,51 @@
                 angle: 0,
                 isJumper: boatIndex === 5,
                 jumpCooldown: 0,
+                smokeTimer: Math.random() * SMOKE_INTERVAL,
+                trailTimer: Math.random() * TRAIL_INTERVAL,
+            });
+        },
+
+        spawnSmoke(spike, drawW, drawH) {
+            const cfg = BOAT_CONFIGS[spike.boatIndex];
+            if (!cfg?.emitsSmoke) return;
+
+            const angle = spike.angle || 0;
+            const exhaustX = (Math.random() - 0.5) * drawW * 0.28;
+            const exhaustY = -drawH * (0.88 + Math.random() * 0.08);
+            const worldX = spike.x + exhaustX * Math.cos(angle) - exhaustY * Math.sin(angle);
+            const worldY = spike.y + drawH + exhaustX * Math.sin(angle) + exhaustY * Math.cos(angle);
+            const life = SMOKE_LIFE_MIN + Math.random() * (SMOKE_LIFE_MAX - SMOKE_LIFE_MIN);
+
+            this.smoke.push({
+                x: worldX,
+                y: worldY,
+                vx: -(520 + Math.random() * 180),
+                vy: -(120 + Math.random() * 80),
+                size: 3 + Math.random() * 4,
+                growth: 14 + Math.random() * 12,
+                life,
+                maxLife: life,
+            });
+        },
+
+        spawnTrail(spike, drawW, drawH, speed) {
+            const cfg = BOAT_CONFIGS[spike.boatIndex];
+            if (!cfg?.emitsTrail || !spike.onGround) return;
+
+            const angle = spike.angle || 0;
+            const trailX = -drawW * 0.42;
+            const trailY = -drawH * 0.06;
+            const worldX = spike.x + trailX * Math.cos(angle) - trailY * Math.sin(angle);
+            const worldY = spike.y + drawH + trailX * Math.sin(angle) + trailY * Math.cos(angle);
+
+            this.trails.push({
+                x: worldX + (Math.random() * 4 - 2),
+                y: worldY + (Math.random() * 4 - 2),
+                vx: -speed - (120 + Math.random() * 80),
+                vy: -(40 + Math.random() * 40),
+                life: TRAIL_LIFE_MIN + Math.random() * (TRAIL_LIFE_MAX - TRAIL_LIFE_MIN),
+                size: 2 + Math.random() * 2,
             });
         },
 
@@ -120,6 +180,12 @@
                 if (baseY == null) continue;
 
                 const { drawW, drawH } = getBoatDrawSize(cfg);
+                s.smokeTimer -= dt;
+                while (cfg.emitsSmoke && s.smokeTimer <= 0) {
+                    this.spawnSmoke(s, drawW, drawH);
+                    s.smokeTimer += SMOKE_INTERVAL * (0.8 + Math.random() * 0.7);
+                }
+                s.trailTimer -= dt;
 
                 if (s.y == null) {
                     s.y = baseY - drawH;
@@ -158,6 +224,11 @@
                     }
                 }
 
+                while (cfg.emitsTrail && s.onGround && s.trailTimer <= 0) {
+                    this.spawnTrail(s, drawW, drawH, speed);
+                    s.trailTimer += TRAIL_INTERVAL * (0.9 + Math.random() * 0.5);
+                }
+
                 s.lastGroundY = baseY;
 
                 const leftIdx = Math.max(0, idx - 4);
@@ -168,6 +239,10 @@
                     const dx = rightIdx - leftIdx || 1;
                     const dy = yR - yL;
                     let targetAngle = Math.atan2(dy, dx);
+
+                    if (s.isJumper && !s.onGround) {
+                        targetAngle += s.vy < 0 ? JUMPER_AIR_TILT_UP : JUMPER_AIR_TILT_DOWN;
+                    }
 
                     targetAngle = Math.max(-BOAT_MAX_ANGLE, Math.min(BOAT_MAX_ANGLE, targetAngle));
 
@@ -204,13 +279,45 @@
                     }
                 }
             }
+
+            this.smoke = this.smoke.filter((puff) => {
+                puff.x += puff.vx * dt;
+                puff.y += puff.vy * dt;
+                puff.size += puff.growth * dt;
+                puff.life -= dt;
+                return puff.life > 0;
+            });
+
+            this.trails = this.trails.filter((particle) => {
+                particle.x += particle.vx * dt;
+                particle.y += particle.vy * dt;
+                particle.vy += 250 * dt;
+                particle.life -= dt;
+                return particle.life > 0;
+            });
         },
 
         draw(ctx, terrainProfile) {
-            if (!terrainProfile?.length || !this.spikes?.length) return;
+            if (!terrainProfile?.length) return;
 
             ctx.save();
             ctx.imageSmoothingEnabled = false;
+
+            for (const puff of this.smoke || []) {
+                const t = puff.life / puff.maxLife;
+                ctx.globalAlpha = Math.max(0, t * 0.38);
+                ctx.fillStyle = "#000";
+                ctx.beginPath();
+                ctx.arc(puff.x, puff.y, puff.size, 0, Math.PI * 2);
+                ctx.fill();
+            }
+
+            ctx.globalAlpha = 1;
+
+            for (const particle of this.trails || []) {
+                ctx.fillStyle = "#000";
+                ctx.fillRect(particle.x, particle.y, particle.size, particle.size);
+            }
 
             for (const s of this.spikes) {
                 const cfg = BOAT_CONFIGS[s.boatIndex];
