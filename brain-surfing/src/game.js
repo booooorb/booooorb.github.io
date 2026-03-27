@@ -52,11 +52,10 @@
             summary: "Your uploaded EDF is parsed locally in the browser and converted for the game.",
             notes: [
                 "The game auto-picks a channel, but you can switch channels from the dropdown.",
-                "Uploaded EDF data is resampled and normalized for the surfing view.",
+                "The surf wave still uses a normalized gameplay copy, but the probe keeps the raw EDF amplitude readout.",
             ],
         },
     };
-
     const PLAYER_SIZE = 64;
     const GRAVITY = 1600;
     const GLIDE_GRAVITY = 200;
@@ -99,10 +98,15 @@
         eegReady: false,
         eegSampleRate: 0,
         eegValues: [],
+        eegPhysicalValues: null,
+        eegPhysicalUnit: "",
+        eegProbeMeta: null,
         eegLength: 0,
         eegTime: 0,
         eegStartOffsetSec: 11300,
         lastEffectiveTime: 0,
+        currentHeadSample: 0,
+        waveProbeX: null,
         sleepSegments: [],
         sleepIndex: 0,
         currentStageCode: null,
@@ -191,6 +195,98 @@
         return `${pad(h)}:${pad(m)}:${pad(s)}`;
     }
 
+    function clamp(value, min, max) {
+        return Math.min(max, Math.max(min, value));
+    }
+
+    function loopedSample(values, index) {
+        if (!Array.isArray(values) || !values.length || !Number.isFinite(index)) {
+            return null;
+        }
+
+        let i = index % values.length;
+        if (i < 0) i += values.length;
+        const value = values[i];
+        return Number.isFinite(value) ? value : null;
+    }
+
+    function hasOriginalEdfProbe() {
+        return Boolean(state.lastUploadedEdfBuffer && state.eegProbeMeta);
+    }
+
+    function hasPhysicalReadout() {
+        return Array.isArray(state.eegPhysicalValues) && state.eegPhysicalValues.length === state.eegLength;
+    }
+
+    function sampleIndexForCanvasX(x) {
+        const width = Math.max(canvas.width, 1);
+        const sampleRate = state.eegSampleRate || 50;
+        const clampedX = clamp(Math.round(x), 0, width - 1);
+        const headSample = Number.isFinite(state.currentHeadSample)
+            ? state.currentHeadSample
+            : Math.floor(state.lastEffectiveTime * sampleRate);
+        return Math.round(headSample - (width - 1 - clampedX) * HORIZONTAL_SAMPLE_STEP);
+    }
+
+    function readOriginalEdfPhysicalSampleAtTime(timeSec) {
+        if (!hasOriginalEdfProbe()) return null;
+
+        const meta = state.eegProbeMeta;
+        const totalSamples = meta.originalSampleCount || (meta.channelSamplesPerRecord * meta.numRecords);
+        if (!Number.isFinite(totalSamples) || totalSamples <= 0) return null;
+
+        let sampleIndex = Math.round(timeSec * meta.originalSampleRate);
+        sampleIndex %= totalSamples;
+        if (sampleIndex < 0) sampleIndex += totalSamples;
+
+        const recordIndex = Math.floor(sampleIndex / meta.channelSamplesPerRecord);
+        const sampleInRecord = sampleIndex % meta.channelSamplesPerRecord;
+        const byteOffset = meta.headerBytes +
+            (recordIndex * meta.bytesPerRecord) +
+            meta.channelRecordByteOffset +
+            (sampleInRecord * 2);
+
+        if (byteOffset < 0 || byteOffset + 2 > state.lastUploadedEdfBuffer.byteLength) {
+            return null;
+        }
+
+        const view = new DataView(state.lastUploadedEdfBuffer);
+        const digitalValue = view.getInt16(byteOffset, true);
+        const physicalValue = meta.physicalMin + (digitalValue - meta.digitalMin) * meta.scale;
+        return Number.isFinite(physicalValue) ? physicalValue : null;
+    }
+
+    function formatProbeLabel(sampleIndex) {
+        const originalPhysicalValue = readOriginalEdfPhysicalSampleAtTime(sampleIndex / (state.eegSampleRate || 50));
+        if (originalPhysicalValue !== null) {
+            const unit = state.eegProbeMeta?.amplitudeUnit || state.eegPhysicalUnit || "uV";
+            return `Original EDF magnitude: ${Math.abs(originalPhysicalValue).toFixed(1)} ${unit}`;
+        }
+
+        const physicalValue = loopedSample(state.eegPhysicalValues, sampleIndex);
+        if (physicalValue !== null) {
+            const unit = state.eegPhysicalUnit || "raw";
+            return `Resampled magnitude: ${Math.abs(physicalValue).toFixed(1)} ${unit}`;
+        }
+
+        const normalizedValue = loopedSample(state.eegValues, sampleIndex) || 0;
+        return `Normalized magnitude: ${Math.abs(normalizedValue).toFixed(3)}`;
+    }
+
+    function setWaveProbeFromPointer(event) {
+        const rect = canvas.getBoundingClientRect();
+        if (!rect.width || !rect.height) return;
+
+        const x = ((event.clientX - rect.left) / rect.width) * canvas.width;
+        const y = ((event.clientY - rect.top) / rect.height) * canvas.height;
+        if (!Number.isFinite(x) || !Number.isFinite(y) || x < 0 || y < 0 || x > canvas.width || y > canvas.height) {
+            state.waveProbeX = null;
+            return;
+        }
+
+        state.waveProbeX = clamp(x, 0, Math.max(0, canvas.width - 1));
+    }
+
     function stagePretty(code) {
         const dataset = DATASETS[state.datasetKey];
         if (!dataset?.hasStages || !code) return "No stage data";
@@ -228,11 +324,16 @@
     }
 
     function channelsFrom(data) {
-        return data?.channels || data?.valuesByChannel || null;
+        return data?.visualValuesByChannel || data?.channels || data?.valuesByChannel || null;
+    }
+
+    function physicalChannelsFrom(data) {
+        return data?.physicalValuesByChannel || data?.physicalByChannel || null;
     }
 
     function renderChannelDropdown() {
-        const labels = state.datasetKey === "user" && state.lastUploadedEdfLabels
+        const useEdfLabels = Array.isArray(state.lastUploadedEdfLabels) && state.lastUploadedEdfLabels.length > 1;
+        const labels = useEdfLabels
             ? state.lastUploadedEdfLabels
             : state.availableChannels;
 
@@ -241,14 +342,13 @@
             return;
         }
 
-        const userEdf = state.datasetKey === "user" && state.lastUploadedEdfLabels;
         dom.channels.innerHTML = `
           <div class="channel-select-row">
             <label class="channel-select-label" for="channel-select">Channel</label>
             <select id="channel-select" class="channel-select">
               ${labels.map((label, index) => {
-                const value = userEdf ? String(index) : label;
-                const selected = userEdf
+                const value = useEdfLabels ? String(index) : label;
+                const selected = useEdfLabels
                     ? index === state.currentEdfChannelIndex
                     : label === state.channelName;
                 return `<option value="${value}" ${selected ? "selected" : ""}>${label}</option>`;
@@ -262,6 +362,11 @@
         const dataset = DATASET_INFO[state.datasetKey] || DATASET_INFO.user;
         const smoothSamples = SMOOTH_WINDOW * 2 + 1;
         const smoothSec = state.eegSampleRate ? (smoothSamples / state.eegSampleRate).toFixed(2) : "0.00";
+        const probeSummary = hasOriginalEdfProbe()
+            ? `Probe reads the nearest original EDF sample at the source sample rate and shows its absolute ${state.eegProbeMeta?.amplitudeUnit || state.eegPhysicalUnit || "signal"} magnitude with no centering, normalization, or resampling.`
+            : hasPhysicalReadout()
+                ? `Probe uses absolute ${state.eegPhysicalUnit || "signal"} values from the resampled physical signal because the original EDF sample stream is not available here.`
+                : "This dataset only ships the normalized surfing wave, so the hover probe falls back to normalized magnitude.";
         const sourceLink = dataset.sourceUrl
             ? `<a class="info-source" href="${dataset.sourceUrl}" target="_blank" rel="noreferrer">${dataset.sourceLabel}</a>`
             : `<strong>${dataset.sourceLabel}</strong>`;
@@ -282,6 +387,8 @@
             <dd>${state.eegSampleRate || 0} Hz</dd>
             <dt>Channel</dt>
             <dd>${state.channelName || "N/A"}</dd>
+            <dt>Probe</dt>
+            <dd>${hasOriginalEdfProbe() ? `Original ${state.eegProbeMeta?.amplitudeUnit || state.eegPhysicalUnit || "EDF"} ready` : hasPhysicalReadout() ? `Resampled ${state.eegPhysicalUnit || "EDF"} ready` : "Normalized fallback"}</dd>
           </dl>
           <div class="info-section">
             <div class="info-section-title">About This Dataset</div>
@@ -293,7 +400,8 @@
           <div class="info-section">
             <div class="info-section-title">Game Processing</div>
             <ul class="info-list">
-              <li>EEG values are normalized to [-1, 1] before drawing.</li>
+              <li>Gameplay terrain uses a normalized copy of the signal so the surf wave stays playable.</li>
+              <li>${probeSummary}</li>
               <li>Smoothing window: ${smoothSamples} samples (~${smoothSec}s at ${state.eegSampleRate || 0} Hz).</li>
               <li>Amplitude scale: x${AMP_SCALE}; horizontal stretch: ${HORIZONTAL_SAMPLE_STEP} samples/px.</li>
               <li>Wave scroll speed: ${EEG_SCROLL_SPEED}x real time.</li>
@@ -305,6 +413,7 @@
     function initEEGFromJson(data) {
         state.eegSampleRate = data.sampleRate || 50;
         const channelMap = channelsFrom(data);
+        const physicalChannelMap = physicalChannelsFrom(data);
 
         if (channelMap) {
             state.availableChannels = Object.keys(channelMap);
@@ -320,21 +429,32 @@
             state.channelName = state.channelName || data.channel || data.channelLabel || null;
         }
 
-        const raw = channelMap
+        const visualRaw = channelMap
             ? (Array.isArray(channelMap[state.channelName]) ? channelMap[state.channelName] : [])
-            : (Array.isArray(data.values) ? data.values : []);
+            : (Array.isArray(data.visualValues) ? data.visualValues : Array.isArray(data.values) ? data.values : []);
+        const physicalRaw = physicalChannelMap
+            ? (Array.isArray(physicalChannelMap[state.channelName]) ? physicalChannelMap[state.channelName] : null)
+            : (Array.isArray(data.physicalValues) ? data.physicalValues : null);
 
-        if (!raw.length) throw new Error("Selected channel has no values");
+        if (!visualRaw.length) throw new Error("Selected channel has no values");
         let maxAbs = 0;
-        for (const value of raw) {
+        for (const value of visualRaw) {
             const abs = Math.abs(value);
             if (abs > maxAbs) maxAbs = abs;
         }
         if (!maxAbs) throw new Error("All EEG samples are zero");
 
-        state.eegValues = raw.map((value) => value / maxAbs);
+        state.eegValues = visualRaw.map((value) => value / maxAbs);
+        state.eegPhysicalValues = Array.isArray(physicalRaw) && physicalRaw.length === visualRaw.length
+            ? physicalRaw.slice()
+            : null;
+        state.eegPhysicalUnit = typeof data.amplitudeUnit === "string" ? data.amplitudeUnit : "";
+        state.eegProbeMeta = data?.probeMeta || null;
         state.eegLength = state.eegValues.length;
         state.eegReady = true;
+        if (state.waveProbeX !== null) {
+            state.waveProbeX = clamp(state.waveProbeX, 0, Math.max(0, canvas.width - 1));
+        }
         renderChannelDropdown();
         updateInfoPanel();
         restartEntranceAnimation();
@@ -345,6 +465,12 @@
         setStatus("EEG: loading...", "rgba(0,0,0,0.6)");
         state.eegReady = false;
         state.isLoadingEeg = true;
+        state.eegPhysicalValues = null;
+        state.eegPhysicalUnit = "";
+        state.eegProbeMeta = null;
+        state.lastUploadedEdfBuffer = null;
+        state.lastUploadedEdfLabels = null;
+        state.waveProbeX = null;
         window.SpikeSystem?.reset?.();
 
         fetch(url)
@@ -361,6 +487,71 @@
                 console.error("Failed to load EEG data:", err);
                 state.isLoadingEeg = false;
                 setStatus("EEG: failed to load dataset", "rgba(128,0,0,0.7)");
+            });
+    }
+
+    function parseEdfBuffer(buffer, options = {}) {
+        const {
+            channelIndex,
+            datasetKey = state.datasetKey,
+            preferredLabels,
+            resetStages = false,
+            useEdfStartTime = false,
+            statusText = null,
+        } = options;
+
+        const json = window.parseEdfToJson(buffer, { channelIndex, preferredLabels, targetRate: 50 });
+        state.lastUploadedEdfBuffer = buffer;
+        state.lastUploadedEdfLabels = json.channelLabels || null;
+        state.currentEdfChannelIndex = Number.isFinite(json.channelIndex) ? json.channelIndex : state.currentEdfChannelIndex;
+        state.datasetKey = datasetKey;
+        state.lastEEGJson = json;
+
+        if (resetStages) {
+            state.sleepSegments = [];
+            state.currentStageCode = null;
+        }
+
+        if (useEdfStartTime) {
+            state.eegStartOffsetSec = Number.isFinite(json.startTimeSec) ? json.startTimeSec : 0;
+            state.lastEffectiveTime = state.eegStartOffsetSec;
+        }
+
+        initEEGFromJson(json);
+        state.isLoadingEeg = false;
+        setStatus(statusText || `EEG: wave loaded (${json.channelLabel || "channel"})`, "rgba(0,128,0,0.7)");
+    }
+
+    function loadEEGFromEdfUrl(dataset) {
+        setStatus("EEG: loading EDF...", "rgba(0,0,0,0.6)");
+        state.eegReady = false;
+        state.isLoadingEeg = true;
+        state.eegPhysicalValues = null;
+        state.eegPhysicalUnit = "";
+        state.eegProbeMeta = null;
+        state.lastUploadedEdfBuffer = null;
+        state.lastUploadedEdfLabels = null;
+        state.waveProbeX = null;
+        window.SpikeSystem?.reset?.();
+
+        fetch(dataset.edfUrl)
+            .then((res) => {
+                if (!res.ok) throw new Error(`HTTP ${res.status}`);
+                return res.arrayBuffer();
+            })
+            .then((buffer) => {
+                parseEdfBuffer(buffer, {
+                    datasetKey: state.datasetKey,
+                    preferredLabels: dataset.defaultChannel ? [dataset.defaultChannel] : undefined,
+                    resetStages: false,
+                    useEdfStartTime: false,
+                    statusText: `EEG: original EDF loaded (${dataset.defaultChannel || "channel"}) - hover for original uV magnitude`,
+                });
+            })
+            .catch((err) => {
+                console.error("Failed to load EDF data:", err);
+                state.isLoadingEeg = false;
+                setStatus("EEG: failed to load EDF dataset", "rgba(128,0,0,0.7)");
             });
     }
 
@@ -394,12 +585,18 @@
         const dataset = DATASETS[state.datasetKey];
         if (!dataset) return;
         state.channelName = dataset.defaultChannel || state.channelName;
+        state.waveProbeX = null;
         syncDatasetButtons();
         renderChannelDropdown();
 
         if (state.datasetKey === "user") {
             state.eegReady = false;
             state.isLoadingEeg = false;
+            state.eegPhysicalValues = null;
+            state.eegPhysicalUnit = "";
+            state.eegProbeMeta = null;
+            state.lastUploadedEdfBuffer = null;
+            state.lastUploadedEdfLabels = null;
             state.sleepSegments = [];
             state.currentStageCode = null;
             setStatus("EEG: upload an EDF to start", "rgba(0,0,0,0.6)");
@@ -407,7 +604,14 @@
             return;
         }
 
-        loadEEGFromUrl(dataset.eegUrl);
+        state.sleepSegments = [];
+        state.sleepIndex = 0;
+        state.currentStageCode = null;
+        state.eegStartOffsetSec = 0;
+        state.lastEffectiveTime = 0;
+
+        if (dataset.edfUrl) loadEEGFromEdfUrl(dataset);
+        else loadEEGFromUrl(dataset.eegUrl);
         if (dataset.hasStages && dataset.stagesUrl) loadStagesFromUrl(dataset.stagesUrl);
     }
 
@@ -581,6 +785,7 @@
         state.eegTime = 0;
         state.score = 0;
         state.isGameOver = false;
+        state.waveProbeX = null;
         state.sleepIndex = 0;
         state.particles = [];
         state.floatingTexts = [];
@@ -657,9 +862,7 @@
 
         let sum = 0;
         for (let offset = -SMOOTH_WINDOW; offset <= SMOOTH_WINDOW; offset += 1) {
-            let i = (index + offset) % state.eegLength;
-            if (i < 0) i += state.eegLength;
-            sum += state.eegValues[i];
+            sum += loopedSample(state.eegValues, index + offset) || 0;
         }
         return sum / (SMOOTH_WINDOW * 2 + 1);
     }
@@ -691,6 +894,7 @@
         updateStage(state.lastEffectiveTime);
 
         const headSample = Math.floor(state.lastEffectiveTime * sampleRate);
+        state.currentHeadSample = headSample;
         const maxWaveHeight = baselineY - TOP_MARGIN;
         state.terrainProfile = new Array(width);
 
@@ -902,6 +1106,60 @@
         ctx.stroke();
     }
 
+    function drawWaveProbe() {
+        if (state.waveProbeX === null || state.terrainProfile.length !== canvas.width) return;
+
+        const x = clamp(Math.round(state.waveProbeX), 0, Math.max(0, canvas.width - 1));
+        const y = state.terrainProfile[x];
+        if (!Number.isFinite(y)) return;
+
+        const sampleIndex = sampleIndexForCanvasX(x);
+        const label = formatProbeLabel(sampleIndex);
+        const labelPaddingX = 10;
+        const labelHeight = 28;
+
+        ctx.save();
+        ctx.lineWidth = 1;
+        ctx.strokeStyle = "rgba(0, 0, 0, 0.22)";
+        ctx.beginPath();
+        ctx.moveTo(x + 0.5, TOP_MARGIN);
+        ctx.lineTo(x + 0.5, state.groundY);
+        ctx.stroke();
+
+        ctx.fillStyle = "#ffffff";
+        ctx.strokeStyle = "#000000";
+        ctx.lineWidth = 2;
+        ctx.beginPath();
+        ctx.arc(x + 0.5, y + 0.5, 6, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.stroke();
+
+        ctx.font = "bold 14px 'Courier New', monospace";
+        ctx.textAlign = "left";
+        ctx.textBaseline = "middle";
+
+        const textWidth = ctx.measureText(label).width;
+        const boxWidth = textWidth + labelPaddingX * 2;
+        let boxX = x + 16;
+        if (boxX + boxWidth > canvas.width - 8) boxX = canvas.width - boxWidth - 8;
+        if (boxX < 8) boxX = 8;
+
+        let boxY = y - 42;
+        if (boxY < 8) boxY = Math.min(y + 16, canvas.height - labelHeight - 8);
+
+        ctx.fillStyle = "rgba(255, 255, 255, 0.94)";
+        ctx.strokeStyle = "rgba(0, 0, 0, 0.85)";
+        ctx.lineWidth = 1.5;
+        ctx.beginPath();
+        ctx.rect(boxX, boxY, boxWidth, labelHeight);
+        ctx.fill();
+        ctx.stroke();
+
+        ctx.fillStyle = "#000";
+        ctx.fillText(label, boxX + labelPaddingX, boxY + labelHeight / 2 + 0.5);
+        ctx.restore();
+    }
+
     function drawPlayer() {
         const p = state.player;
         if (state.hidePlayer || state.isGameOver || state.shatterPieces.length) return;
@@ -1093,6 +1351,7 @@
             window.SpikeSystem?.draw?.(ctx, state.terrainProfile);
             drawPlayer();
             drawEffects();
+            drawWaveProbe();
             if (state.isGameOver) drawGameOver();
             else drawHud();
         }
@@ -1170,19 +1429,13 @@
     }
 
     function parseUploadedEdf(buffer, channelIndex) {
-        const json = window.parseEdfToJson(buffer, { channelIndex, targetRate: 50 });
-        state.lastUploadedEdfBuffer = buffer;
-        state.lastUploadedEdfLabels = json.channelLabels || null;
-        state.currentEdfChannelIndex = Number.isFinite(json.channelIndex) ? json.channelIndex : state.currentEdfChannelIndex;
-        state.eegStartOffsetSec = Number.isFinite(json.startTimeSec) ? json.startTimeSec : 0;
-        state.lastEffectiveTime = state.eegStartOffsetSec;
-        state.datasetKey = "user";
-        state.lastEEGJson = json;
-        state.sleepSegments = [];
-        state.currentStageCode = null;
-        initEEGFromJson(json);
-        state.isLoadingEeg = false;
-        setStatus(`EEG: user EDF loaded (${json.channelLabel || "channel"})`, "rgba(0,128,0,0.7)");
+        parseEdfBuffer(buffer, {
+            channelIndex,
+            datasetKey: "user",
+            resetStages: true,
+            useEdfStartTime: true,
+            statusText: "EEG: user EDF loaded - hover the wave for original uV magnitude",
+        });
     }
 
     function loop(timestamp) {
@@ -1206,8 +1459,18 @@
     dom.channels?.addEventListener("change", (event) => {
         const select = event.target.closest("#channel-select");
         if (!select) return;
-        if (state.datasetKey === "user" && state.lastUploadedEdfBuffer && state.lastUploadedEdfLabels) {
-            parseUploadedEdf(state.lastUploadedEdfBuffer, parseInt(select.value, 10));
+        if (state.lastUploadedEdfBuffer && state.lastUploadedEdfLabels) {
+            if (state.datasetKey === "user") {
+                parseUploadedEdf(state.lastUploadedEdfBuffer, parseInt(select.value, 10));
+            } else {
+                parseEdfBuffer(state.lastUploadedEdfBuffer, {
+                    channelIndex: parseInt(select.value, 10),
+                    datasetKey: state.datasetKey,
+                    resetStages: false,
+                    useEdfStartTime: false,
+                    statusText: `EEG: original EDF loaded (${DATASETS[state.datasetKey]?.label || "dataset"}) - hover for original uV magnitude`,
+                });
+            }
             return;
         }
         state.channelName = select.value;
@@ -1229,6 +1492,12 @@
             }
         };
         reader.readAsArrayBuffer(file);
+    });
+
+    canvas.addEventListener("pointermove", setWaveProbeFromPointer);
+    canvas.addEventListener("pointerdown", setWaveProbeFromPointer);
+    canvas.addEventListener("pointerleave", () => {
+        state.waveProbeX = null;
     });
 
     window.addEventListener("keydown", (event) => {

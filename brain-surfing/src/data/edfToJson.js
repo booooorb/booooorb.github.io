@@ -1,5 +1,11 @@
 // In-browser EDF (classic EDF with 16-bit little-endian samples) -> JSON shape used by the game:
-//   { sampleRate: number, values: number[], channelLabel?: string }
+//   {
+//     sampleRate: number,
+//     values: number[],        // normalized gameplay copy
+//     physicalValues: number[],// resampled raw EDF values in the channel's physical unit
+//     probeMeta: object,       // metadata for reading the original EDF sample stream
+//     channelLabel?: string
+//   }
 
 (() => {
     function _edfAscii(view, start, len) {
@@ -132,6 +138,9 @@
         off += ns * 16;
 
         off += ns * 80;
+
+        const physicalDimensions = [];
+        for (let i = 0; i < ns; i++) physicalDimensions.push(_edfField(view, off + i * 8, 8));
         off += ns * 8;
 
         const physMin = [];
@@ -163,6 +172,13 @@
         const bytesPerRecord = samplesPerRecord.reduce((sum, n) => sum + (n * 2), 0);
         if (!Number.isFinite(bytesPerRecord) || bytesPerRecord <= 0) {
             throw new Error("EDF parse error: bad bytesPerRecord");
+        }
+
+        const channelRecordByteOffsets = new Array(ns);
+        let recordByteCursor = 0;
+        for (let i = 0; i < ns; i++) {
+            channelRecordByteOffsets[i] = recordByteCursor;
+            recordByteCursor += samplesPerRecord[i] * 2;
         }
 
         // Infer record count if unknown/invalid
@@ -215,9 +231,10 @@
         if (!values.length) throw new Error("EDF parse error: produced empty values array");
 
         // Resample to targetRate (Python: raw.copy().resample(TARGET_RATE))
-        const values_rs = _resampleLinear(values, sampleRate, targetRate);
+        const physicalValues = _resampleLinear(values, sampleRate, targetRate);
+        const values_rs = physicalValues.slice();
 
-        // Normalize (Python: subtract mean, divide by max abs)
+        // Keep a normalized copy for gameplay, but preserve the physical-unit signal for readout.
         let mu = _mean(values_rs);
         for (let i = 0; i < values_rs.length; i++) values_rs[i] -= mu;
 
@@ -229,9 +246,28 @@
         return {
             sampleRate: targetRate,  
             values: values_rs,         
+            visualValues: values_rs.slice(),
+            physicalValues,
             channelLabel: labels[ch] || "",
             channelIndex: ch,
             channelLabels: labels,
+            amplitudeMean: mu,
+            amplitudePeak: maxAbs,
+            amplitudeUnit: physicalDimensions[ch] || "",
+            probeMeta: {
+                headerBytes,
+                bytesPerRecord,
+                numRecords: nRecords,
+                channelIndex: ch,
+                channelRecordByteOffset: channelRecordByteOffsets[ch],
+                channelSamplesPerRecord: spr,
+                originalSampleRate: sampleRate,
+                originalSampleCount: values.length,
+                digitalMin: dmn,
+                scale,
+                physicalMin: pmn,
+                amplitudeUnit: physicalDimensions[ch] || "",
+            },
             numSignals: ns,
             startTimeSec,
             startTimeStr,
