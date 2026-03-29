@@ -30,6 +30,7 @@
             summary: "Overnight polysomnography from PhysioNet's Sleep-EDF Expanded collection.",
             notes: [
                 "Default gameplay channel uses Fpz-Cz from the source recording.",
+                "This demo loads a short slice of the overnight recording so the game starts quickly.",
                 "The game keeps the waveform looping and rescales it visually for surfing.",
                 "Stage labels in the HUD come from the accompanying sleep stage annotations.",
             ],
@@ -43,6 +44,7 @@
             summary: "Clinical scalp EEG from the University of Siena, published on PhysioNet.",
             notes: [
                 "The original recordings use the international 10-20 electrode system.",
+                "This demo loads a short seizure-centered EDF slice so the original probe data stays fast to load.",
                 "This demo uses a seizure-oriented channel selection and loops the processed waveform.",
                 "The game timing is gameplay-oriented, not a diagnostic viewer.",
             ],
@@ -108,6 +110,7 @@
         eegLength: 0,
         eegTime: 0,
         eegStartOffsetSec: 11300,
+        eegDisplayOffsetSec: 0,
         lastEffectiveTime: 0,
         currentHeadSample: 0,
         waveProbeX: null,
@@ -273,8 +276,7 @@
             return `Resampled magnitude: ${Math.abs(physicalValue).toFixed(1)} ${unit}`;
         }
 
-        const normalizedValue = loopedSample(state.eegValues, sampleIndex) || 0;
-        return `Normalized magnitude: ${Math.abs(normalizedValue).toFixed(3)}`;
+        return "EDF magnitude unavailable";
     }
 
     function setWaveProbeFromPointer(event) {
@@ -404,7 +406,7 @@
             ? `Probe reads the nearest original EDF sample at the source sample rate and shows its absolute ${state.eegProbeMeta?.amplitudeUnit || state.eegPhysicalUnit || "signal"} magnitude with no centering, normalization, or resampling.`
             : hasPhysicalReadout()
                 ? `Probe uses absolute ${state.eegPhysicalUnit || "signal"} values from the resampled physical signal because the original EDF sample stream is not available here.`
-                : "This dataset only ships the normalized surfing wave, so the hover probe falls back to normalized magnitude.";
+                : "This dataset does not currently expose EDF probe data.";
         const sourceLink = dataset.sourceUrl
             ? `<a class="info-source" href="${dataset.sourceUrl}" target="_blank" rel="noreferrer">${dataset.sourceLabel}</a>`
             : `<strong>${dataset.sourceLabel}</strong>`;
@@ -426,7 +428,7 @@
             <dt>Channel</dt>
             <dd>${state.channelName || "N/A"}</dd>
             <dt>Probe</dt>
-            <dd>${hasOriginalEdfProbe() ? `Original ${state.eegProbeMeta?.amplitudeUnit || state.eegPhysicalUnit || "EDF"} ready` : hasPhysicalReadout() ? `Resampled ${state.eegPhysicalUnit || "EDF"} ready` : "Normalized fallback"}</dd>
+            <dd>${hasOriginalEdfProbe() ? `Original ${state.eegProbeMeta?.amplitudeUnit || state.eegPhysicalUnit || "EDF"} ready` : hasPhysicalReadout() ? `Resampled ${state.eegPhysicalUnit || "EDF"} ready` : "Probe unavailable"}</dd>
           </dl>
           <div class="info-section">
             <div class="info-section-title">About This Dataset</div>
@@ -551,8 +553,9 @@
         }
 
         if (useEdfStartTime) {
-            state.eegStartOffsetSec = Number.isFinite(json.startTimeSec) ? json.startTimeSec : 0;
-            state.lastEffectiveTime = state.eegStartOffsetSec;
+            state.eegStartOffsetSec = 0;
+            state.eegDisplayOffsetSec = Number.isFinite(json.startTimeSec) ? json.startTimeSec : 0;
+            state.lastEffectiveTime = state.eegDisplayOffsetSec;
         }
 
         initEEGFromJson(json);
@@ -601,11 +604,15 @@
 
         const firstN1 = state.sleepSegments.find((segment) => segment.stage === "N1");
         const firstNonW = state.sleepSegments.find((segment) => segment.stage !== "W");
-        state.eegStartOffsetSec = state.datasetKey === "seizure"
-            ? 300
-            : firstN1?.t ?? firstNonW?.t ?? 0;
+        const sourceOffsetSec = Number.isFinite(data?.sourceOffsetSec) ? data.sourceOffsetSec : null;
+        state.eegStartOffsetSec = sourceOffsetSec === null
+            ? state.datasetKey === "seizure"
+                ? 300
+                : firstN1?.t ?? firstNonW?.t ?? 0
+            : 0;
+        state.eegDisplayOffsetSec = sourceOffsetSec === null ? 0 : sourceOffsetSec;
         state.sleepIndex = 0;
-        state.lastEffectiveTime = state.eegStartOffsetSec;
+        state.lastEffectiveTime = state.eegStartOffsetSec + state.eegDisplayOffsetSec;
         state.currentStageCode = state.sleepSegments[0]?.stage || null;
     }
 
@@ -646,10 +653,11 @@
         state.sleepIndex = 0;
         state.currentStageCode = null;
         state.eegStartOffsetSec = 0;
+        state.eegDisplayOffsetSec = 0;
         state.lastEffectiveTime = 0;
 
         if (dataset.edfUrl) loadEEGFromEdfUrl(dataset);
-        else loadEEGFromUrl(dataset.eegUrl);
+        else if (dataset.eegUrl) loadEEGFromUrl(dataset.eegUrl);
         if (dataset.hasStages && dataset.stagesUrl) loadStagesFromUrl(dataset.stagesUrl);
     }
 
@@ -941,10 +949,11 @@
         const sampleRate = state.eegSampleRate || 50;
 
         state.eegTime += dt * EEG_SCROLL_SPEED;
-        state.lastEffectiveTime = state.eegTime + state.eegStartOffsetSec;
-        updateStage(state.lastEffectiveTime);
+        const localTimeSec = state.eegTime + state.eegStartOffsetSec;
+        state.lastEffectiveTime = localTimeSec + state.eegDisplayOffsetSec;
+        updateStage(localTimeSec);
 
-        const headSample = Math.floor(state.lastEffectiveTime * sampleRate);
+        const headSample = Math.floor(localTimeSec * sampleRate);
         state.currentHeadSample = headSample;
         const maxWaveHeight = baselineY - TOP_MARGIN;
         state.terrainProfile = new Array(width);

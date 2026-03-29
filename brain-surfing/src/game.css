@@ -5,6 +5,9 @@
   --muted: #6c5a4a;
   --card: rgba(255, 255, 255, 0.2);
   --card-border: rgba(68, 39, 39, 0.12);
+  --ui-shadow: 3px 3px 0 rgba(68, 39, 39, 0.18);
+  --ui-shadow-strong: 4px 4px 0 rgba(68, 39, 39, 0.22);
+  --ui-shadow-pressed: 2px 2px 0 rgba(68, 39, 39, 0.16);
 }
 
 *,
@@ -79,10 +82,12 @@ body {
   padding: 8px 16px;
   font-size: 0.9rem;
   background: #ffffff;
+  box-shadow: 3px 3px 0 rgba(68, 39, 39, 0.14);
   animation: uiFadeIn 420ms ease both;
   transition:
     background-color 0.2s ease,
-    color 0.2s ease;
+    color 0.2s ease,
+    box-shadow 0.2s ease;
 }
 
 .back-link {
@@ -134,6 +139,7 @@ body.game-over .title {
   background: rgba(255, 255, 255, 0);
   border-radius: 4px;
   padding: 6px 8px;
+  box-shadow: var(--ui-shadow);
   animation: uiFadeIn 520ms ease both;
 }
 
@@ -162,6 +168,7 @@ body.game-over .title {
   background: rgba(90, 90, 90, 0.85);
   color: #f4f4f4;
   z-index: 9999;
+  box-shadow: var(--ui-shadow);
   animation: uiFadeIn 460ms ease both;
 }
 
@@ -173,9 +180,10 @@ body.game-over .title {
 #dataset-controls,
 .instructions-panel,
 #eeg-info {
-  background: rgba(255, 255, 255, 0.72);
+  background: rgba(255, 255, 255, 0.86);
   border: 1px solid rgba(68, 39, 39, 0.12);
   backdrop-filter: blur(2px);
+  box-shadow: var(--ui-shadow);
 }
 
 #dataset-controls {
@@ -195,7 +203,8 @@ body.game-over .title {
 
 .dataset-buttons button,
 .upload-label span,
-#info-toggle {
+#info-toggle,
+.channel-select {
   display: inline-flex;
   align-items: center;
   justify-content: center;
@@ -208,13 +217,28 @@ body.game-over .title {
   color: #f4f4f4;
   cursor: pointer;
   font-family: inherit;
+  box-shadow: var(--ui-shadow);
   animation: uiFadeIn 620ms ease both;
+  transition:
+    background-color 0.2s ease,
+    transform 0.16s ease,
+    box-shadow 0.2s ease;
 }
 
 .dataset-buttons button:hover,
 .upload-label span:hover,
-#info-toggle:hover {
+#info-toggle:hover,
+.channel-select:hover {
   background: #333;
+  box-shadow: var(--ui-shadow-strong);
+  transform: translateY(-1px);
+}
+
+.dataset-buttons button:active,
+.upload-label span:active,
+#info-toggle:active {
+  transform: translateY(1px);
+  box-shadow: var(--ui-shadow-pressed);
 }
 
 .dataset-buttons button.active {
@@ -247,14 +271,7 @@ body.game-over .title {
 .channel-select {
   flex: 1 1 180px;
   max-width: 100%;
-  font-size: 16px;
-  padding: 10px 12px;
-  min-height: 44px;
-  border-radius: 8px;
-  border: 1px solid #aaa;
-  background: #222;
-  color: #f4f4f4;
-  font-family: inherit;
+  appearance: none;
 }
 
 #info-toggle {
@@ -278,7 +295,7 @@ body.game-over .title {
   max-height: 420px;
   max-width: 100%;
   overflow: hidden;
-  background: rgba(255, 255, 255, 0.84);
+  background: rgba(255, 255, 255, 0.92);
   transition:
     max-height 0.25s ease,
     opacity 0.25s ease,
@@ -412,6 +429,7 @@ kbd {
   border-bottom-width: 2px;
   border-radius: 4px;
   background: rgba(255, 255, 255, 0.5);
+  box-shadow: 2px 2px 0 rgba(68, 39, 39, 0.14);
   font-size: 0.95em;
 }
 

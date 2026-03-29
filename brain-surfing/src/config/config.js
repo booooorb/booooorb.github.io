@@ -28,17 +28,17 @@
         datasets: Object.freeze({
             sleep: Object.freeze({
                 label: "Sleep (demo)",
-                edfUrl: `${DATA_BASE}/SC4001E0-PSG.edf`,
-                eegUrl: `${DATA_BASE}/brainwave_runner_sleep.json`,
-                stagesUrl: `${DATA_BASE}/brainwave_stages_sleep.json`,
+                edfUrl: `${DATA_BASE}/SC4001E0-PSG-demo.edf`,
+                eegUrl: null,
+                stagesUrl: `${DATA_BASE}/brainwave_stages_sleep_demo.json`,
                 hasStages: true,
                 defaultChannel: "Fpz-Cz",
             }),
             seizure: Object.freeze({
                 label: "Seizure (demo)",
-                edfUrl: `${DATA_BASE}/PN12-3.edf`,
-                eegUrl: `${DATA_BASE}/brainwave_runner_seizure.json`,
-                stagesUrl: `${DATA_BASE}/brainwave_stages_seizure.json`,
+                edfUrl: `${DATA_BASE}/PN12-3-demo.edf`,
+                eegUrl: null,
+                stagesUrl: `${DATA_BASE}/brainwave_stages_seizure_demo.json`,
                 hasStages: true,
                 defaultChannel: "Cz",
             }),
