@@ -26,14 +26,21 @@
     const TRAIL_INTERVAL = 0.04;
     const TRAIL_LIFE_MIN = 0.4;
     const TRAIL_LIFE_MAX = 0.7;
+    const JUMPER_BOAT_INDEX = 5;
+    const SHATTER_GRAVITY = 2200;
+    const SHATTER_BLAST_SPEED = 440;
+    const SHATTER_SPIN_SPEED = 18;
+    const SHATTER_TILE_SIZE = 6;
+    const SHATTER_WIND_ACCEL = -420;
+    const SHATTER_PADDING = 32;
 
     const boatSources = global.BrainSurfingConfig?.assets?.boats || [];
     const BOAT_CONFIGS = boatSources.map((src, index) => ({
         src,
-        scale: index === 5 ? 0.25 : index === 6 ? 0.3 : 1,
-        widthScale: index === 5 ? JUMPER_WIDTH_SCALE : 1,
+        scale: index === JUMPER_BOAT_INDEX ? 0.25 : index === 6 ? 0.3 : 1,
+        widthScale: index === JUMPER_BOAT_INDEX ? JUMPER_WIDTH_SCALE : 1,
         emitsSmoke: index <= 4,
-        emitsTrail: index === 5,
+        emitsTrail: index === JUMPER_BOAT_INDEX,
     }));
 
     for (const cfg of BOAT_CONFIGS) {
@@ -54,6 +61,116 @@
         };
     }
 
+    function spriteTileHasPixels(data, width, sx, sy, sw, sh) {
+        for (let y = sy; y < sy + sh; y += 1) {
+            for (let x = sx; x < sx + sw; x += 1) {
+                if (data[(y * width + x) * 4 + 3] > 16) return true;
+            }
+        }
+        return false;
+    }
+
+    function createBoatShatterPieces(spike, cfg, drawW, drawH) {
+        const pivotX = spike.x;
+        const pivotY = spike.y + drawH;
+        const img = cfg?.img;
+        const spriteSize = Math.ceil(Math.max(drawW, drawH) + SHATTER_PADDING * 2);
+        const pieces = [];
+        let spriteCanvas = null;
+        let spriteData = null;
+
+        if (img?.complete && img.naturalWidth > 0) {
+            spriteCanvas = document.createElement("canvas");
+            spriteCanvas.width = spriteSize;
+            spriteCanvas.height = spriteSize;
+            const spriteCtx = spriteCanvas.getContext("2d");
+
+            if (spriteCtx) {
+                spriteCtx.translate(spriteSize / 2, spriteSize / 2);
+                spriteCtx.rotate(spike.angle || 0);
+                spriteCtx.drawImage(img, -drawW / 2, -drawH, drawW, drawH);
+                spriteData = spriteCtx.getImageData(0, 0, spriteSize, spriteSize);
+            }
+        }
+
+        if (spriteData) {
+            const { data, width, height } = spriteData;
+            for (let sy = 0; sy < height; sy += SHATTER_TILE_SIZE) {
+                for (let sx = 0; sx < width; sx += SHATTER_TILE_SIZE) {
+                    const sw = Math.min(SHATTER_TILE_SIZE, width - sx);
+                    const sh = Math.min(SHATTER_TILE_SIZE, height - sy);
+                    if (!spriteTileHasPixels(data, width, sx, sy, sw, sh)) continue;
+
+                    const offsetX = sx + sw / 2 - width / 2;
+                    const offsetY = sy + sh / 2 - height / 2;
+                    const distance = Math.hypot(offsetX, offsetY) || 1;
+                    const blast = SHATTER_BLAST_SPEED * (0.55 + Math.random() * 0.9);
+                    const windPush = 280 + Math.random() * 220;
+
+                    pieces.push({
+                        source: spriteCanvas,
+                        sx,
+                        sy,
+                        sw,
+                        sh,
+                        x: pivotX + offsetX,
+                        y: pivotY + offsetY,
+                        vx: (offsetX / distance) * blast * 0.35 - windPush + (Math.random() - 0.5) * 60,
+                        vy: (offsetY / distance) * blast * 0.22 - (180 + Math.random() * 280),
+                        rotation: (Math.random() - 0.5) * 0.6,
+                        vr: (Math.random() - 0.5) * SHATTER_SPIN_SPEED,
+                    });
+                }
+            }
+        }
+
+        if (!pieces.length) {
+            for (let i = 0; i < 48; i += 1) {
+                const angle = (Math.PI * 2 * i) / 48 + (Math.random() - 0.5) * 0.12;
+                const blast = SHATTER_BLAST_SPEED * (0.45 + Math.random() * 0.7);
+                const windPush = 240 + Math.random() * 200;
+
+                pieces.push({
+                    source: null,
+                    sx: 0,
+                    sy: 0,
+                    sw: 4 + Math.random() * 5,
+                    sh: 4 + Math.random() * 5,
+                    x: pivotX + (Math.random() - 0.5) * drawW * 0.7,
+                    y: spike.y + drawH * 0.3 + (Math.random() - 0.5) * drawH * 0.5,
+                    vx: Math.cos(angle) * blast * 0.35 - windPush,
+                    vy: Math.sin(angle) * blast * 0.25 - (180 + Math.random() * 260),
+                    rotation: Math.random() * Math.PI * 2,
+                    vr: (Math.random() - 0.5) * SHATTER_SPIN_SPEED,
+                });
+            }
+        }
+
+        return pieces;
+    }
+
+    function getSpikeBounds(spike) {
+        if (!spike || spike.y == null) return null;
+
+        const cfg = BOAT_CONFIGS[spike.boatIndex];
+        if (!cfg) return null;
+
+        const { drawW, drawH } = getBoatDrawSize(cfg);
+        return {
+            left: spike.x - drawW / 2,
+            right: spike.x + drawW / 2,
+            top: spike.y,
+            bottom: spike.y + drawH,
+            drawW,
+            drawH,
+            cfg,
+        };
+    }
+
+    function boundsOverlap(a, b) {
+        return a.left < b.right && a.right > b.left && a.top < b.bottom && a.bottom > b.top;
+    }
+
     const SpikeSystem = {
         init({ onHit, jumpVelocity }) {
             this.onHit = typeof onHit === "function" ? onHit : null;
@@ -65,6 +182,7 @@
             this.spikes = [];
             this.smoke = [];
             this.trails = [];
+            this.shatterPieces = [];
             this.spikeTimer = SPIKE_INTERVAL_START;
             this.time = 0;
         },
@@ -84,7 +202,7 @@
                 lastGroundY: null,
                 boatIndex,
                 angle: 0,
-                isJumper: boatIndex === 5,
+                isJumper: boatIndex === JUMPER_BOAT_INDEX,
                 jumpCooldown: 0,
                 smokeTimer: Math.random() * SMOKE_INTERVAL,
                 trailTimer: Math.random() * TRAIL_INTERVAL,
@@ -134,7 +252,7 @@
             });
         },
 
-        update(dt, terrainProfile, player, playerSize, canvasWidth) {
+        update(dt, terrainProfile, player, playerSize, canvasWidth, canvasHeight) {
             if (!terrainProfile?.length || !player) return;
 
             this.time += dt;
@@ -280,6 +398,42 @@
                 }
             }
 
+            const shatteredSpikes = new Set();
+            for (let i = 0; i < this.spikes.length; i += 1) {
+                const a = this.spikes[i];
+                const aBounds = getSpikeBounds(a);
+                if (!aBounds) continue;
+
+                for (let j = i + 1; j < this.spikes.length; j += 1) {
+                    const b = this.spikes[j];
+                    const bBounds = getSpikeBounds(b);
+                    if (!bBounds || !boundsOverlap(aBounds, bBounds)) continue;
+
+                    if (a.boatIndex === JUMPER_BOAT_INDEX && b !== a) {
+                        shatteredSpikes.add(a);
+                    }
+
+                    if (b.boatIndex === JUMPER_BOAT_INDEX && a !== b) {
+                        shatteredSpikes.add(b);
+                    }
+                }
+            }
+
+            if (shatteredSpikes.size) {
+                for (let i = this.spikes.length - 1; i >= 0; i -= 1) {
+                    const spike = this.spikes[i];
+                    if (!shatteredSpikes.has(spike)) continue;
+
+                    const bounds = getSpikeBounds(spike);
+                    if (bounds) {
+                        this.shatterPieces.push(
+                            ...createBoatShatterPieces(spike, bounds.cfg, bounds.drawW, bounds.drawH)
+                        );
+                    }
+                    this.spikes.splice(i, 1);
+                }
+            }
+
             this.smoke = this.smoke.filter((puff) => {
                 puff.x += puff.vx * dt;
                 puff.y += puff.vy * dt;
@@ -294,6 +448,15 @@
                 particle.vy += 250 * dt;
                 particle.life -= dt;
                 return particle.life > 0;
+            });
+
+            this.shatterPieces = (this.shatterPieces || []).filter((piece) => {
+                piece.vx += SHATTER_WIND_ACCEL * dt;
+                piece.vy += SHATTER_GRAVITY * dt;
+                piece.x += piece.vx * dt;
+                piece.y += piece.vy * dt;
+                piece.rotation += piece.vr * dt;
+                return piece.y - piece.sh < (canvasHeight || 0) + 400;
             });
         },
 
@@ -340,6 +503,31 @@
                     ctx.fillStyle = "#000";
                     ctx.fillRect(left, top, drawW, drawH);
                 }
+                ctx.restore();
+            }
+
+            for (const piece of this.shatterPieces || []) {
+                ctx.save();
+                ctx.translate(piece.x, piece.y);
+                ctx.rotate(piece.rotation);
+
+                if (piece.source) {
+                    ctx.drawImage(
+                        piece.source,
+                        piece.sx,
+                        piece.sy,
+                        piece.sw,
+                        piece.sh,
+                        -piece.sw / 2,
+                        -piece.sh / 2,
+                        piece.sw,
+                        piece.sh
+                    );
+                } else {
+                    ctx.fillStyle = "#000";
+                    ctx.fillRect(-piece.sw / 2, -piece.sh / 2, piece.sw, piece.sh);
+                }
+
                 ctx.restore();
             }
 

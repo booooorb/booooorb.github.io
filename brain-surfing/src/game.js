@@ -3,6 +3,10 @@
     if (!canvas) return;
 
     const ctx = canvas.getContext("2d");
+    const viewport = {
+        width: canvas.width,
+        height: canvas.height,
+    };
     const dom = {
         datasets: document.getElementById("dataset-controls"),
         upload: document.getElementById("eeg-upload-input"),
@@ -219,7 +223,7 @@
     }
 
     function sampleIndexForCanvasX(x) {
-        const width = Math.max(canvas.width, 1);
+        const width = Math.max(viewport.width, 1);
         const sampleRate = state.eegSampleRate || 50;
         const clampedX = clamp(Math.round(x), 0, width - 1);
         const headSample = Number.isFinite(state.currentHeadSample)
@@ -277,14 +281,14 @@
         const rect = canvas.getBoundingClientRect();
         if (!rect.width || !rect.height) return;
 
-        const x = ((event.clientX - rect.left) / rect.width) * canvas.width;
-        const y = ((event.clientY - rect.top) / rect.height) * canvas.height;
-        if (!Number.isFinite(x) || !Number.isFinite(y) || x < 0 || y < 0 || x > canvas.width || y > canvas.height) {
+        const x = ((event.clientX - rect.left) / rect.width) * viewport.width;
+        const y = ((event.clientY - rect.top) / rect.height) * viewport.height;
+        if (!Number.isFinite(x) || !Number.isFinite(y) || x < 0 || y < 0 || x > viewport.width || y > viewport.height) {
             state.waveProbeX = null;
             return;
         }
 
-        state.waveProbeX = clamp(x, 0, Math.max(0, canvas.width - 1));
+        state.waveProbeX = clamp(x, 0, Math.max(0, viewport.width - 1));
     }
 
     function stagePretty(code) {
@@ -294,8 +298,42 @@
     }
 
     function resizeBackground() {
-        if (!images.background.height || !canvas.height) return;
-        state.bgScale = canvas.height / images.background.height;
+        if (!images.background.height || !viewport.height) return;
+        state.bgScale = viewport.height / images.background.height;
+    }
+
+    function rescaleRuntimeState(previousWidth, previousHeight) {
+        if (!previousWidth || !previousHeight) return;
+
+        const scaleX = viewport.width / previousWidth;
+        const scaleY = viewport.height / previousHeight;
+        if (!Number.isFinite(scaleX) || !Number.isFinite(scaleY)) return;
+
+        if (state.player) {
+            state.player.x *= scaleX;
+            state.player.y *= scaleY;
+        }
+
+        if (state.waveProbeX !== null) {
+            state.waveProbeX = clamp(state.waveProbeX * scaleX, 0, Math.max(0, viewport.width - 1));
+        }
+
+        state.particles.forEach((particle) => {
+            particle.x *= scaleX;
+            particle.y *= scaleY;
+        });
+
+        state.floatingTexts.forEach((text) => {
+            text.x *= scaleX;
+            text.y *= scaleY;
+        });
+
+        state.shatterPieces.forEach((piece) => {
+            piece.x *= scaleX;
+            piece.y *= scaleY;
+        });
+
+        state.terrainProfile = [];
     }
 
     function spawnFloatingText(text, color, radius = 0) {
@@ -453,7 +491,7 @@
         state.eegLength = state.eegValues.length;
         state.eegReady = true;
         if (state.waveProbeX !== null) {
-            state.waveProbeX = clamp(state.waveProbeX, 0, Math.max(0, canvas.width - 1));
+            state.waveProbeX = clamp(state.waveProbeX, 0, Math.max(0, viewport.width - 1));
         }
         renderChannelDropdown();
         updateInfoPanel();
@@ -617,14 +655,27 @@
 
     function resizeCanvas() {
         const rect = canvas.getBoundingClientRect();
-        canvas.width = rect.width;
-        state.groundY = canvas.height - GROUND_MARGIN;
+        const nextWidth = Math.max(1, Math.round(rect.width || viewport.width || canvas.width));
+        const nextHeight = Math.max(1, Math.round(rect.height || viewport.height || canvas.height));
+        const previousWidth = viewport.width;
+        const previousHeight = viewport.height;
+        const deviceScale = clamp(window.devicePixelRatio || 1, 1, 2);
+
+        viewport.width = nextWidth;
+        viewport.height = nextHeight;
+
+        canvas.width = Math.max(1, Math.round(nextWidth * deviceScale));
+        canvas.height = Math.max(1, Math.round(nextHeight * deviceScale));
+        ctx.setTransform(canvas.width / viewport.width, 0, 0, canvas.height / viewport.height, 0, 0);
+
+        state.groundY = viewport.height - GROUND_MARGIN;
         resizeBackground();
+        rescaleRuntimeState(previousWidth, previousHeight);
     }
 
     function createPlayer() {
         state.player = {
-            x: canvas.width / 2 - PLAYER_SIZE / 2,
+            x: viewport.width / 2 - PLAYER_SIZE / 2,
             y: state.groundY - PLAYER_SIZE,
             vy: 0,
             onGround: false,
@@ -885,7 +936,7 @@
         const { trackPlayer = true, updateAudio = true } = options;
         const p = state.player;
         const baselineY = state.groundY;
-        const width = canvas.width;
+        const width = viewport.width;
         const wasOnGround = p.onGround;
         const sampleRate = state.eegSampleRate || 50;
 
@@ -992,7 +1043,7 @@
             piece.x += piece.vx * dt;
             piece.y += piece.vy * dt;
             piece.rotation += piece.vr * dt;
-            return piece.y - piece.sh < canvas.height + 180;
+            return piece.y - piece.sh < viewport.height + 180;
         });
     }
 
@@ -1013,7 +1064,14 @@
             const bgWidth = images.background.width * state.bgScale || 1;
             state.bgScrollX = (state.bgScrollX + BG_SCROLL_SPEED * dt) % bgWidth;
             computeTerrain(dt, { trackPlayer: false, updateAudio: false });
-            window.SpikeSystem?.update?.(dt, state.terrainProfile, { x: -9999, y: -9999 }, PLAYER_SIZE, canvas.width);
+            window.SpikeSystem?.update?.(
+                dt,
+                state.terrainProfile,
+                { x: -9999, y: -9999 },
+                PLAYER_SIZE,
+                viewport.width,
+                viewport.height
+            );
             updateParticles(dt, false);
             updateShatterPieces(dt);
             updateScoreRoll(dt);
@@ -1037,7 +1095,14 @@
         p.y += p.vy * dt;
 
         computeTerrain(dt);
-        window.SpikeSystem?.update?.(dt, state.terrainProfile, p, PLAYER_SIZE, canvas.width);
+        window.SpikeSystem?.update?.(
+            dt,
+            state.terrainProfile,
+            p,
+            PLAYER_SIZE,
+            viewport.width,
+            viewport.height
+        );
 
         if (state.currentTrick) {
             state.trickTimer += dt;
@@ -1071,7 +1136,7 @@
 
     function drawBackground() {
         if (!images.background.width || !state.terrainProfile.length) return;
-        const width = canvas.width;
+        const width = viewport.width;
         ctx.save();
         ctx.beginPath();
         ctx.moveTo(0, 0);
@@ -1093,12 +1158,12 @@
     }
 
     function drawWave() {
-        if (state.terrainProfile.length !== canvas.width) return;
+        if (state.terrainProfile.length !== viewport.width) return;
         ctx.beginPath();
         ctx.lineWidth = 3;
         ctx.lineJoin = "round";
         ctx.lineCap = "round";
-        for (let x = 0; x < canvas.width; x += 1) {
+        for (let x = 0; x < viewport.width; x += 1) {
             if (x === 0) ctx.moveTo(x + 0.5, state.terrainProfile[x] + 0.5);
             else ctx.lineTo(x + 0.5, state.terrainProfile[x] + 0.5);
         }
@@ -1107,9 +1172,9 @@
     }
 
     function drawWaveProbe() {
-        if (state.waveProbeX === null || state.terrainProfile.length !== canvas.width) return;
+        if (state.waveProbeX === null || state.terrainProfile.length !== viewport.width) return;
 
-        const x = clamp(Math.round(state.waveProbeX), 0, Math.max(0, canvas.width - 1));
+        const x = clamp(Math.round(state.waveProbeX), 0, Math.max(0, viewport.width - 1));
         const y = state.terrainProfile[x];
         if (!Number.isFinite(y)) return;
 
@@ -1141,11 +1206,11 @@
         const textWidth = ctx.measureText(label).width;
         const boxWidth = textWidth + labelPaddingX * 2;
         let boxX = x + 16;
-        if (boxX + boxWidth > canvas.width - 8) boxX = canvas.width - boxWidth - 8;
+        if (boxX + boxWidth > viewport.width - 8) boxX = viewport.width - boxWidth - 8;
         if (boxX < 8) boxX = 8;
 
         let boxY = y - 42;
-        if (boxY < 8) boxY = Math.min(y + 16, canvas.height - labelHeight - 8);
+        if (boxY < 8) boxY = Math.min(y + 16, viewport.height - labelHeight - 8);
 
         ctx.fillStyle = "rgba(255, 255, 255, 0.94)";
         ctx.strokeStyle = "rgba(0, 0, 0, 0.85)";
@@ -1222,16 +1287,16 @@
         ctx.textBaseline = "middle";
         ctx.fillStyle = "#000";
         ctx.font = "20px 'Courier New', monospace";
-        ctx.fillText(`Stage: ${stagePretty(state.currentStageCode)}`, canvas.width / 2, canvas.height * 0.39 + 50);
+        ctx.fillText(`Stage: ${stagePretty(state.currentStageCode)}`, viewport.width / 2, viewport.height * 0.39 + 50);
         ctx.font = "16px 'Courier New', monospace";
-        ctx.fillText(`EDF time: ${formatClock(state.lastEffectiveTime)}`, canvas.width / 2, canvas.height * 0.39 + 70);
-        ctx.fillText(`Channel: ${state.channelName || "N/A"}`, canvas.width / 2, canvas.height * 0.39 + 90);
+        ctx.fillText(`EDF time: ${formatClock(state.lastEffectiveTime)}`, viewport.width / 2, viewport.height * 0.39 + 70);
+        ctx.fillText(`Channel: ${state.channelName || "N/A"}`, viewport.width / 2, viewport.height * 0.39 + 90);
         ctx.font = "bold 16px 'Courier New', monospace";
-        ctx.fillText(`High score: ${sessionHighScore.get()}`, canvas.width / 2, canvas.height * 0.39 + 110);
+        ctx.fillText(`High score: ${sessionHighScore.get()}`, viewport.width / 2, viewport.height * 0.39 + 110);
         ctx.globalAlpha = 0.18;
         ctx.font = "bold 96px 'Trebuchet MS', 'Segoe UI', system-ui, sans-serif";
         ctx.fillStyle = getScoreDisplayColor();
-        drawRollingScore(canvas.width / 2, canvas.height * 0.39);
+        drawRollingScore(viewport.width / 2, viewport.height * 0.39);
         ctx.restore();
     }
 
@@ -1245,8 +1310,8 @@
     }
 
     function drawLoadingState() {
-        const centerX = canvas.width / 2;
-        const centerY = canvas.height * 0.39;
+        const centerX = viewport.width / 2;
+        const centerY = viewport.height * 0.39;
 
         ctx.save();
         ctx.translate(centerX, centerY);
@@ -1312,16 +1377,16 @@
 
     function drawGameOver() {
         const fade = smoothStep01(state.gameOverFade);
-        const centerX = canvas.width / 2;
-        const centerY = canvas.height * 0.39;
+        const centerX = viewport.width / 2;
+        const centerY = viewport.height * 0.39;
 
         ctx.save();
-        const overlayGradient = ctx.createLinearGradient(0, 0, 0, canvas.height);
+        const overlayGradient = ctx.createLinearGradient(0, 0, 0, viewport.height);
         overlayGradient.addColorStop(0, `rgba(12, 10, 10, ${0.32 * fade})`);
         overlayGradient.addColorStop(0.45, `rgba(12, 10, 10, ${0.58 * fade})`);
         overlayGradient.addColorStop(1, `rgba(12, 10, 10, ${0.8 * fade})`);
         ctx.fillStyle = overlayGradient;
-        ctx.fillRect(0, 0, canvas.width, canvas.height);
+        ctx.fillRect(0, 0, viewport.width, viewport.height);
         ctx.restore();
 
         ctx.save();
@@ -1342,7 +1407,7 @@
 
     function draw() {
         ctx.fillStyle = "#EAE7D9";
-        ctx.fillRect(0, 0, canvas.width, canvas.height);
+        ctx.fillRect(0, 0, viewport.width, viewport.height);
         if (state.isLoadingEeg) {
             drawLoadingState();
         } else {
@@ -1382,7 +1447,7 @@
         if (!p) return false;
         if (p.onGround || state.canCoyoteJump) return true;
         if (!state.terrainProfile.length) return false;
-        const idx = Math.max(0, Math.min(canvas.width - 1, Math.round(p.x + PLAYER_SIZE / 2)));
+        const idx = Math.max(0, Math.min(viewport.width - 1, Math.round(p.x + PLAYER_SIZE / 2)));
         return Math.abs(p.y + PLAYER_SIZE - state.terrainProfile[idx]) <= 8;
     }
 
@@ -1521,7 +1586,6 @@
     window.addEventListener("pointerup", handlePrimaryUp);
     window.addEventListener("resize", () => {
         resizeCanvas();
-        createPlayer();
     });
     window.addEventListener("blur", () => {
         state.isTabPaused = true;

@@ -11,6 +11,7 @@
     const SurfAudio = {
         audioCtx: null,
         osc: null,
+        toneFilter: null,
         gain: null,
         ready: false,
 
@@ -34,17 +35,22 @@
             this.audioCtx = ctx;
 
             this.osc = ctx.createOscillator();
+            this.toneFilter = ctx.createBiquadFilter();
             this.gain = ctx.createGain();
             this.windGain = ctx.createGain();
             this.sfxGain = ctx.createGain();
 
             this.osc.type = "sine";
-            this.osc.frequency.value = 240;
+            this.osc.frequency.value = 140;
+            this.toneFilter.type = "lowpass";
+            this.toneFilter.frequency.value = 520;
+            this.toneFilter.Q.value = 0.7;
             this.gain.gain.value = 0;
             this.windGain.gain.value = 0;
             this.sfxGain.gain.value = 0.1;
 
-            this.osc.connect(this.gain);
+            this.osc.connect(this.toneFilter);
+            this.toneFilter.connect(this.gain);
             this.gain.connect(ctx.destination);
             this.windGain.connect(ctx.destination);
             this.sfxGain.connect(ctx.destination);
@@ -148,11 +154,20 @@
             const t = this.audioCtx.currentTime;
 
             if (onGround) {
-                const minFreq = 1;
-                const maxFreq = 180;
-                const freq = minFreq + (maxFreq - minFreq) * amp01;
-                this.osc.frequency.setTargetAtTime(freq, t, 0.1);
-                this.gain.gain.setTargetAtTime(0.15, t, 0.4);
+                const clampedAmp = Math.max(0, Math.min(1, Number.isFinite(amp01) ? amp01 : 0));
+                const highAmpThreshold = 0.7;
+                const lowPitch = 102;
+                const midPitch = 142;
+                const highPitch = 235;
+                let freq = lowPitch + (midPitch - lowPitch) * Math.min(clampedAmp / highAmpThreshold, 1);
+
+                if (clampedAmp > highAmpThreshold) {
+                    const highAmpProgress = (clampedAmp - highAmpThreshold) / (1 - highAmpThreshold);
+                    freq = midPitch + (highPitch - midPitch) * Math.pow(highAmpProgress, 1.35);
+                }
+
+                this.osc.frequency.setTargetAtTime(freq, t, 0.16);
+                this.gain.gain.setTargetAtTime(0.11, t, 0.28);
             } else {
                 this.gain.gain.setTargetAtTime(0, t, 0.05);
             }
