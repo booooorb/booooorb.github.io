@@ -8,7 +8,7 @@
             .then((data) => audioCtx.decodeAudioData(data));
     }
 
-    const SurfAudio = {
+    const BrainSurfingWaveSound = {
         audioCtx: null,
         osc: null,
         subOsc: null,
@@ -23,24 +23,15 @@
         wobbleGain: null,
         bedGain: null,
         masterGain: null,
+        windGain: null,
+        windBuffer: null,
+        windSource: null,
+        loadingWind: false,
         lastAmp: null,
         ready: false,
 
-        windBuffer: null,
-        windSource: null,
-        windGain: null,
-        loadingWind: false,
-
-        flipBuffer: null,
-        loadingFlip: false,
-
-        crashBuffer: null,
-        loadingCrash: false,
-
-        sfxGain: null,
-
         init() {
-            if (this.ready || !AC) return;
+            if (this.ready || !AC) return this.audioCtx;
 
             const ctx = new AC();
             this.audioCtx = ctx;
@@ -59,7 +50,6 @@
             this.bedGain = ctx.createGain();
             this.masterGain = ctx.createGain();
             this.windGain = ctx.createGain();
-            this.sfxGain = ctx.createGain();
 
             this.osc.type = "sine";
             this.subOsc.type = "sine";
@@ -87,7 +77,6 @@
             this.bedGain.gain.value = 2.35;
             this.masterGain.gain.value = 0.76;
             this.windGain.gain.value = 0;
-            this.sfxGain.gain.value = 0.06;
 
             this.osc.connect(this.toneFilter);
             this.subOsc.connect(this.subGain);
@@ -103,17 +92,29 @@
             this.wobbleOsc.connect(this.wobbleGain);
             this.wobbleGain.connect(this.toneFilter.frequency);
             this.windGain.connect(this.bedGain);
-            this.sfxGain.connect(this.masterGain);
 
             this.loadWind(assetConfig.windGlide);
-            this.loadFlip(assetConfig.flip);
-            this.loadCrash(assetConfig.crash);
 
             this.osc.start();
             this.subOsc.start();
             this.overtoneOsc.start();
             this.wobbleOsc.start();
             this.ready = true;
+
+            return ctx;
+        },
+
+        ensure() {
+            if (!AC) return null;
+            const ctx = this.ready ? this.audioCtx : this.init();
+            if (ctx && ctx.state === "suspended") {
+                ctx.resume();
+            }
+            return ctx;
+        },
+
+        getAudioContext() {
+            return this.audioCtx;
         },
 
         smooth01(value) {
@@ -121,12 +122,12 @@
             return clamped * clamped * (3 - 2 * clamped);
         },
 
-        deepToneProfile(amp01, signedChange01 = 0) {
-            const clamped = Math.max(0, Math.min(1, Number.isFinite(amp01) ? amp01 : 0));
-            const ampMotion = this.smooth01(clamped);
-            const signed = Math.max(-1, Math.min(1, Number.isFinite(signedChange01) ? signedChange01 : 0));
-            const highPush = this.smooth01(Math.max(0, signed));
-            const lowPush = this.smooth01(Math.max(0, -signed));
+        deepToneProfile(amp01, signedChange01) {
+            const clampedAmp = Math.max(0, Math.min(1, Number.isFinite(amp01) ? amp01 : 0));
+            const ampMotion = this.smooth01(clampedAmp);
+            const signedChange = Math.max(-1, Math.min(1, Number.isFinite(signedChange01) ? signedChange01 : 0));
+            const highPush = this.smooth01(Math.max(0, signedChange));
+            const lowPush = this.smooth01(Math.max(0, -signedChange));
             const emphasis = Math.min(1, ampMotion * 0.22 + highPush * 0.9 + lowPush * 0.9);
             const fundamental = 34 + ampMotion * 36 + highPush * 1180 - lowPush * 14;
 
@@ -149,8 +150,8 @@
             this.loadingWind = true;
 
             loadBuffer(this.audioCtx, url)
-                .then((buf) => {
-                    this.windBuffer = buf;
+                .then((buffer) => {
+                    this.windBuffer = buffer;
                     this.loadingWind = false;
                     this.startWindIfNeeded();
                 })
@@ -160,79 +161,21 @@
                 });
         },
 
-        loadFlip(url) {
-            if (!this.audioCtx || this.loadingFlip || this.flipBuffer || !url) return;
-            this.loadingFlip = true;
-
-            loadBuffer(this.audioCtx, url)
-                .then((buf) => {
-                    this.flipBuffer = buf;
-                    this.loadingFlip = false;
-                })
-                .catch((err) => {
-                    console.warn("Failed to load flip SFX:", err);
-                    this.loadingFlip = false;
-                });
-        },
-
-        loadCrash(url) {
-            if (!this.audioCtx || this.loadingCrash || this.crashBuffer || !url) return;
-            this.loadingCrash = true;
-
-            loadBuffer(this.audioCtx, url)
-                .then((buf) => {
-                    this.crashBuffer = buf;
-                    this.loadingCrash = false;
-                })
-                .catch((err) => {
-                    console.warn("Failed to load crash SFX:", err);
-                    this.loadingCrash = false;
-                });
-        },
-
-        playFlip() {
-            if (!this.audioCtx || !this.flipBuffer || !this.sfxGain) return;
-
-            const src = this.audioCtx.createBufferSource();
-            src.buffer = this.flipBuffer;
-            src.connect(this.sfxGain);
-            src.start(0);
-        },
-
-        playCrash() {
-            if (!this.audioCtx || !this.crashBuffer || !this.sfxGain) return;
-
-            const src = this.audioCtx.createBufferSource();
-            src.buffer = this.crashBuffer;
-            src.connect(this.sfxGain);
-            src.start(0);
-        },
-
         startWindIfNeeded() {
             if (!this.audioCtx || !this.windBuffer || this.windSource) return;
 
-            const src = this.audioCtx.createBufferSource();
-            src.buffer = this.windBuffer;
-            src.loop = true;
-            src.connect(this.windGain);
-            src.start(0);
-            this.windSource = src;
-        },
-
-        ensure() {
-            if (!AC) return;
-
-            if (!this.ready) {
-                this.init();
-            } else if (this.audioCtx.state === "suspended") {
-                this.audioCtx.resume();
-            }
+            const source = this.audioCtx.createBufferSource();
+            source.buffer = this.windBuffer;
+            source.loop = true;
+            source.connect(this.windGain);
+            source.start(0);
+            this.windSource = source;
         },
 
         update(onGround, amp01, currentTrick) {
             if (!this.ready || !this.audioCtx || !this.osc || !this.gain || !this.subOsc || !this.subGain) return;
 
-            const t = this.audioCtx.currentTime;
+            const now = this.audioCtx.currentTime;
             const clampedAmp = Math.max(0, Math.min(1, Number.isFinite(amp01) ? amp01 : 0));
             const previousAmp = Number.isFinite(this.lastAmp) ? this.lastAmp : clampedAmp;
             const signedChange = Math.max(-1, Math.min(1, (clampedAmp - previousAmp) * 260));
@@ -240,22 +183,21 @@
 
             if (onGround) {
                 const profile = this.deepToneProfile(clampedAmp, signedChange);
-
-                this.osc.frequency.setTargetAtTime(profile.fundamental, t, 0.08);
-                this.subOsc.frequency.setTargetAtTime(profile.subFundamental, t, 0.1);
-                this.overtoneOsc.frequency.setTargetAtTime(profile.overtone, t, 0.08);
-                this.toneFilter.frequency.setTargetAtTime(profile.filter, t, 0.06);
-                this.toneFilter.Q.setTargetAtTime(profile.resonance, t, 0.08);
-                this.gain.gain.setTargetAtTime(profile.toneLevel, t, 0.08);
-                this.subGain.gain.setTargetAtTime(profile.subLevel, t, 0.1);
-                this.overtoneGain.gain.setTargetAtTime(profile.overtoneLevel, t, 0.08);
-                this.wobbleGain.gain.setTargetAtTime(profile.wobbleDepth, t, 0.08);
-                this.wobbleOsc.frequency.setTargetAtTime(profile.wobbleRate, t, 0.08);
+                this.osc.frequency.setTargetAtTime(profile.fundamental, now, 0.08);
+                this.subOsc.frequency.setTargetAtTime(profile.subFundamental, now, 0.1);
+                this.overtoneOsc.frequency.setTargetAtTime(profile.overtone, now, 0.08);
+                this.toneFilter.frequency.setTargetAtTime(profile.filter, now, 0.06);
+                this.toneFilter.Q.setTargetAtTime(profile.resonance, now, 0.08);
+                this.gain.gain.setTargetAtTime(profile.toneLevel, now, 0.08);
+                this.subGain.gain.setTargetAtTime(profile.subLevel, now, 0.1);
+                this.overtoneGain.gain.setTargetAtTime(profile.overtoneLevel, now, 0.08);
+                this.wobbleGain.gain.setTargetAtTime(profile.wobbleDepth, now, 0.08);
+                this.wobbleOsc.frequency.setTargetAtTime(profile.wobbleRate, now, 0.08);
             } else {
-                this.gain.gain.setTargetAtTime(0, t, 0.07);
-                this.subGain.gain.setTargetAtTime(0, t, 0.08);
-                this.overtoneGain.gain.setTargetAtTime(0, t, 0.06);
-                this.wobbleGain.gain.setTargetAtTime(0.25, t, 0.08);
+                this.gain.gain.setTargetAtTime(0, now, 0.07);
+                this.subGain.gain.setTargetAtTime(0, now, 0.08);
+                this.overtoneGain.gain.setTargetAtTime(0, now, 0.06);
+                this.wobbleGain.gain.setTargetAtTime(0.25, now, 0.08);
             }
 
             if (this.windBuffer && !this.windSource) {
@@ -264,31 +206,20 @@
 
             if (this.windGain) {
                 const target = currentTrick === "glide" ? 0.16 : 0;
-                this.windGain.gain.setTargetAtTime(target, t, 0.08);
+                this.windGain.gain.setTargetAtTime(target, now, 0.08);
             }
         },
 
         pause() {
             if (!this.ready || !this.audioCtx) return;
 
-            const t = this.audioCtx.currentTime;
-            if (this.gain) {
-                this.gain.gain.setTargetAtTime(0, t, 0.04);
-            }
-
-            if (this.subGain) {
-                this.subGain.gain.setTargetAtTime(0, t, 0.05);
-            }
-
-            if (this.overtoneGain) {
-                this.overtoneGain.gain.setTargetAtTime(0, t, 0.04);
-            }
-
-            if (this.windGain) {
-                this.windGain.gain.setTargetAtTime(0, t, 0.04);
-            }
+            const now = this.audioCtx.currentTime;
+            if (this.gain) this.gain.gain.setTargetAtTime(0, now, 0.04);
+            if (this.subGain) this.subGain.gain.setTargetAtTime(0, now, 0.05);
+            if (this.overtoneGain) this.overtoneGain.gain.setTargetAtTime(0, now, 0.04);
+            if (this.windGain) this.windGain.gain.setTargetAtTime(0, now, 0.04);
         },
     };
 
-    global.SurfAudio = SurfAudio;
+    global.BrainSurfingWaveSound = BrainSurfingWaveSound;
 })(window);
