@@ -75,14 +75,6 @@
             return Array.isArray(state.eegPhysicalValues) && state.eegPhysicalValues.length === state.eegLength;
         }
 
-        function channelsFrom(data) {
-            return data?.visualValuesByChannel || data?.channels || data?.valuesByChannel || null;
-        }
-
-        function physicalChannelsFrom(data) {
-            return data?.physicalValuesByChannel || data?.physicalByChannel || null;
-        }
-
         function initInfoToggle() {
             if (!dom.infoToggle || !dom.info) return;
 
@@ -177,61 +169,6 @@
                 </ul>
               </div>
             `;
-        }
-
-        function applyEEGData(data) {
-            state.eegSampleRate = data.sampleRate || 50;
-            const channelMap = channelsFrom(data);
-            const physicalChannelMap = physicalChannelsFrom(data);
-
-            if (channelMap) {
-                state.availableChannels = Object.keys(channelMap);
-                if (!state.channelName || !channelMap[state.channelName]) {
-                    state.channelName = state.availableChannels[0] || null;
-                }
-            } else if (Array.isArray(data.channelLabels) && data.channelLabels.length > 1) {
-                state.availableChannels = data.channelLabels.slice();
-                state.channelName = data.channelLabel || state.availableChannels[0] || null;
-                state.currentEdfChannelIndex = Number.isFinite(data.channelIndex)
-                    ? data.channelIndex
-                    : state.currentEdfChannelIndex;
-            } else {
-                state.availableChannels = [];
-                state.channelName = state.channelName || data.channel || data.channelLabel || null;
-            }
-
-            const visualRaw = channelMap
-                ? (Array.isArray(channelMap[state.channelName]) ? channelMap[state.channelName] : [])
-                : (Array.isArray(data.visualValues) ? data.visualValues : Array.isArray(data.values) ? data.values : []);
-            const physicalRaw = physicalChannelMap
-                ? (Array.isArray(physicalChannelMap[state.channelName]) ? physicalChannelMap[state.channelName] : null)
-                : (Array.isArray(data.physicalValues) ? data.physicalValues : null);
-
-            if (!visualRaw.length) throw new Error("Selected channel has no values");
-
-            let maxAmplitude = 0;
-            for (let i = 0; i < visualRaw.length; i += 1) {
-                const abs = Math.abs(visualRaw[i]);
-                if (abs > maxAmplitude) maxAmplitude = abs;
-            }
-
-            if (!maxAmplitude) throw new Error("All EEG samples are zero");
-
-            state.eegValues = visualRaw.map((value) => value / maxAmplitude);
-            state.eegPhysicalValues = Array.isArray(physicalRaw) && physicalRaw.length === visualRaw.length
-                ? physicalRaw.slice()
-                : null;
-            state.eegPhysicalUnit = typeof data.amplitudeUnit === "string" ? data.amplitudeUnit : "";
-            state.eegProbeMeta = data?.probeMeta || null;
-            state.eegLength = state.eegValues.length;
-            state.eegReady = true;
-
-            if (state.waveProbeX !== null) {
-                state.waveProbeX = Math.max(0, Math.min(state.waveProbeX, Math.max(0, viewport.width - 1)));
-            }
-
-            renderChannelDropdown();
-            updateInfoPanel();
         }
 
         function triggerScoreFlash() {
@@ -418,7 +355,6 @@
             syncDatasetButtons,
             renderChannelDropdown,
             updateInfoPanel,
-            applyEEGData,
             triggerScoreFlash,
             updateScoreRoll,
             drawHud,
