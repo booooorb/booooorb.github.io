@@ -4,11 +4,11 @@ export const MODES = {
   congruent: {
     key: "congruent",
     label: "word = color",
-    helper: "Mode: word matches the ink color. Type the ink color.",
+    helper: "match",
   },
   incongruent: {
     key: "incongruent",
     label: "word != color",
-    helper: "Mode: word clashes with the ink color. Ignore the word and type the ink color.",
+    helper: "ignore the word",
   },
 };

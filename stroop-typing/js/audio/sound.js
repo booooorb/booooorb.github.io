@@ -1,6 +1,6 @@
 const SCALE_STEPS = [0, 2, 4, 5, 7, 9, 11, 12];
 const ROOT_HZ = 261.63;
-const MASTER_VOL = 0.3;
+const MASTER_VOL = 2;
 
 function midiFromHz(hz) {
   return 69 + 12 * Math.log2(hz / 440);

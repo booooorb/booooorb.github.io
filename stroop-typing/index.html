@@ -11,20 +11,15 @@
 <body>
     <main class="app">
         <header class="top">
-            <div class="left">
-                <div class="title">strooptype</div>
-                <p class="sub">
-                    Type the <strong>INK COLOR</strong> (not the word). Start typing to begin.
-                </p>
-            </div>
+            <div class="title">strooptype</div>
 
             <div class="right">
                 <div class="stat">
-                    <div class="label"><strong>time</strong></div>
+                    <div class="label">time</div>
                     <div class="value"><span id="timeLeft">30</span><span class="unit">s</span></div>
                 </div>
                 <div class="stat">
-                    <div class="label"><strong>wpm</strong></div>
+                    <div class="label">wpm</div>
                     <div class="value" id="wpm">0</div>
                 </div>
             </div>
@@ -37,21 +32,20 @@
             </div>
 
             <div class="actions">
-                <div id="statusPill" class="statusText"><strong>word = color</strong></div>
+                <button id="skipWarmup" class="btn" type="button" hidden>skip tutorial</button>
+                <div id="statusPill" class="statusText">word = color</div>
                 <button id="restart" class="btn" type="button">restart</button>
             </div>
         </section>
 
         <section class="stage">
-            <div id="stimulus" class="stimulus">start typing...</div>
+            <div id="stimulus" class="stimulus is-idle">type to begin</div>
 
             <div class="inputRow">
-                <span class="prompt">></span>
-
                 <div class="inputWrap">
                     <div id="typedOverlay" class="typedOverlay" aria-hidden="true"></div>
                     <input id="answer" class="answer" type="text" inputmode="text" autocomplete="off" spellcheck="false"
-                        placeholder="red / blue / green ..." />
+                        placeholder="type the color" />
                 </div>
             </div>
 
@@ -61,10 +55,6 @@
         <section class="anim">
             <canvas id="stroopArena" class="arena"></canvas>
         </section>
-
-        <footer class="foot">
-            <div class="keys">Keys: <strong>Esc</strong> restart. <strong>Space</strong> and <strong>Enter</strong> stay disabled.</div>
-        </footer>
     </main>
 
     <script type="module" src="js/main.js"></script>

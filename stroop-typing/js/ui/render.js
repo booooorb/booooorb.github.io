@@ -6,6 +6,17 @@ function clearNode(node) {
   }
 }
 
+function setStimulusState(stimulusEl, text, { color = "", compact = false } = {}) {
+  stimulusEl.textContent = text;
+  stimulusEl.style.color = color;
+  stimulusEl.classList.toggle("is-idle", compact);
+}
+
+function syncModeButtons(elements, mode) {
+  elements.modeCongruent.classList.toggle("active", mode === MODES.congruent.key);
+  elements.modeIncongruent.classList.toggle("active", mode === MODES.incongruent.key);
+}
+
 export function flashStimulus(stimulusEl) {
   stimulusEl.classList.remove("quick-fade-in");
   requestAnimationFrame(() => {
@@ -14,22 +25,27 @@ export function flashStimulus(stimulusEl) {
 }
 
 export function renderPrompt(stimulusEl, prompt) {
-  stimulusEl.textContent = prompt.word;
-  stimulusEl.style.color = prompt.ink.hex;
+  setStimulusState(stimulusEl, prompt.word, { color: prompt.ink.hex, compact: false });
   flashStimulus(stimulusEl);
 }
 
 export function renderMode(elements, mode) {
-  elements.modeCongruent.classList.toggle("active", mode === MODES.congruent.key);
-  elements.modeIncongruent.classList.toggle("active", mode === MODES.incongruent.key);
+  syncModeButtons(elements, mode);
   elements.statusPill.textContent = MODES[mode].label;
   elements.mini.textContent = MODES[mode].helper;
+  elements.skipWarmup.hidden = true;
+}
+
+export function renderWarmupState(elements, mode, step, total) {
+  syncModeButtons(elements, mode);
+  elements.statusPill.textContent = "warm up";
+  elements.mini.textContent = `tutorial ${step}/${total} - type the ink color, not the word`;
+  elements.skipWarmup.hidden = false;
 }
 
 export function renderIdleState(elements, mode) {
   renderMode(elements, mode);
-  elements.stimulus.textContent = "start typing...";
-  elements.stimulus.style.color = "";
+  setStimulusState(elements.stimulus, "type to begin", { compact: true });
   elements.answer.value = "";
   renderOverlay(elements, "", "");
 }
@@ -73,8 +89,8 @@ export function renderResult(elements, message, wpm) {
   elements.answer.value = "";
   renderOverlay(elements, "", "");
   elements.answer.blur();
-  elements.stimulus.style.color = "";
-  elements.stimulus.textContent = message || "done";
+  setStimulusState(elements.stimulus, message || "finished", { compact: false });
   elements.wpm.textContent = String(wpm);
+  elements.skipWarmup.hidden = true;
   flashStimulus(elements.stimulus);
 }

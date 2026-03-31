@@ -12,6 +12,7 @@ export function getElements() {
     statusPill: document.getElementById("statusPill"),
     modeCongruent: document.getElementById("modeCongruent"),
     modeIncongruent: document.getElementById("modeIncongruent"),
+    skipWarmup: document.getElementById("skipWarmup"),
     restart: document.getElementById("restart"),
     arena: document.getElementById("stroopArena"),
     inputWrap: answer?.parentElement ?? null,
