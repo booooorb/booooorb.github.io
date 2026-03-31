@@ -14,10 +14,12 @@
         status: document.getElementById("eeg-status"),
         info: document.getElementById("eeg-info"),
         infoToggle: document.getElementById("info-toggle"),
+        mobileInfoLink: document.getElementById("mobile-info-link"),
     };
 
     const config = window.BrainSurfingConfig || {};
     const datasets = config.datasets || {};
+    const requestedDataset = new URLSearchParams(window.location.search).get("dataset");
     const stageLabels = config.stageLabelsByDataset || {};
     const assets = config.assets || {};
     const statusColors = {
@@ -118,6 +120,10 @@
         },
         scoreFlash: 0,
     };
+
+    if (requestedDataset && datasets[requestedDataset]) {
+        state.datasetKey = requestedDataset;
+    }
 
     function image(src) {
         const img = new Image();

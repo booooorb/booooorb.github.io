@@ -136,6 +136,12 @@
             window.addEventListener("pointerdown", (event) => {
                 if (isInteractiveElement(event.target)) return;
                 event.preventDefault();
+
+                if (state.isGameOver) {
+                    onRestart?.();
+                    return;
+                }
+
                 handlePrimaryDown();
             });
 

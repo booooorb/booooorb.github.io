@@ -11,49 +11,6 @@
             sessionHighScore,
         } = options;
 
-        const datasetInfo = {
-            sleep: {
-                badge: "Sleep demo",
-                sourceLabel: "Sleep-EDF Expanded",
-                sourceUrl: "https://www.physionet.org/content/sleep-edfx/1.0.0/",
-                sourceDetail: "Sleep cassette example SC4001E0-PSG.edf",
-                originalSampleRate: "100 Hz",
-                summary: "Overnight polysomnography from PhysioNet's Sleep-EDF Expanded collection.",
-                notes: [
-                    "Default gameplay channel uses Fpz-Cz from the source recording.",
-                    "This demo loads a short slice of the overnight recording so the game starts quickly.",
-                    "The game keeps the waveform looping and rescales it visually for surfing.",
-                    "Stage labels in the HUD come from the accompanying sleep stage annotations.",
-                ],
-            },
-            seizure: {
-                badge: "Seizure demo",
-                sourceLabel: "Siena Scalp EEG Database",
-                sourceUrl: "https://www.physionet.org/content/siena-scalp-eeg/1.0.0/",
-                sourceDetail: "Patient 12, recording 3",
-                originalSampleRate: "512 Hz",
-                summary: "Clinical scalp EEG from the University of Siena, published on PhysioNet.",
-                notes: [
-                    "The original recordings use the international 10-20 electrode system.",
-                    "This demo loads a short seizure-centered EDF slice so the original probe data stays fast to load.",
-                    "This demo uses a seizure-oriented channel selection and loops the processed waveform.",
-                    "The game timing is gameplay-oriented, not a diagnostic viewer.",
-                ],
-            },
-            user: {
-                badge: "User EDF",
-                sourceLabel: "Local upload",
-                sourceUrl: "",
-                sourceDetail: "Custom EDF chosen in your browser",
-                originalSampleRate: "Varies by file",
-                summary: "Your uploaded EDF is parsed locally in the browser and converted for the game.",
-                notes: [
-                    "The game auto-picks a channel, but you can switch channels from the dropdown.",
-                    "The surf wave still uses a normalized gameplay copy, but the probe keeps the raw EDF amplitude readout.",
-                ],
-            },
-        };
-
         function smoothStep01(t) {
             return t * t * (3 - 2 * t);
         }
@@ -91,6 +48,10 @@
                 button.classList.toggle("active", isActive);
                 button.setAttribute("aria-pressed", isActive ? "true" : "false");
             });
+
+            if (dom.mobileInfoLink) {
+                dom.mobileInfoLink.href = `info.html?dataset=${encodeURIComponent(state.datasetKey)}`;
+            }
         }
 
         function renderChannelDropdown() {
@@ -120,7 +81,10 @@
         function updateInfoPanel() {
             if (!dom.info) return;
 
-            const dataset = datasetInfo[state.datasetKey] || datasetInfo.user;
+            syncDatasetButtons();
+
+            const dataset = global.BrainSurfingInfoContent?.getDatasetInfo(state.datasetKey)
+                || global.BrainSurfingInfoContent?.getDatasetInfo("user");
             const smoothSamples = constants.smoothWindow * 2 + 1;
             const smoothSec = state.eegSampleRate ? (smoothSamples / state.eegSampleRate).toFixed(2) : "0.00";
             const probeSummary = hasOriginalEdfProbe()
@@ -128,9 +92,6 @@
                 : hasPhysicalReadout()
                     ? `Probe uses absolute ${state.eegPhysicalUnit || "signal"} values from the resampled physical signal because the original EDF sample stream is not available here.`
                     : "This dataset does not currently expose EDF probe data.";
-            const sourceLink = dataset.sourceUrl
-                ? `<a class="info-source" href="${dataset.sourceUrl}" target="_blank" rel="noreferrer">${dataset.sourceLabel}</a>`
-                : `<strong>${dataset.sourceLabel}</strong>`;
 
             dom.info.innerHTML = `
               <div class="info-heading">
@@ -139,7 +100,9 @@
               </div>
               <dl class="info-meta">
                 <dt>Source</dt>
-                <dd>${sourceLink}</dd>
+                <dd>${dataset.sourceUrl
+                    ? `<a class="info-source" href="${dataset.sourceUrl}" target="_blank" rel="noreferrer">${dataset.sourceLabel}</a>`
+                    : `<strong>${dataset.sourceLabel}</strong>`}</dd>
                 <dt>Record</dt>
                 <dd>${dataset.sourceDetail}</dd>
                 <dt>Original rate</dt>
@@ -151,13 +114,7 @@
                 <dt>Probe</dt>
                 <dd>${hasOriginalEdfProbe() ? `Original ${state.eegProbeMeta?.amplitudeUnit || state.eegPhysicalUnit || "EDF"} ready` : hasPhysicalReadout() ? `Resampled ${state.eegPhysicalUnit || "EDF"} ready` : "Probe unavailable"}</dd>
               </dl>
-              <div class="info-section">
-                <div class="info-section-title">About This Dataset</div>
-                <ul class="info-list">
-                  <li>${dataset.summary}</li>
-                  ${dataset.notes.map((note) => `<li>${note}</li>`).join("")}
-                </ul>
-              </div>
+              ${global.BrainSurfingInfoContent?.renderDatasetSection(state.datasetKey, "About This Dataset") || ""}
               <div class="info-section">
                 <div class="info-section-title">Game Processing</div>
                 <ul class="info-list">
@@ -346,7 +303,7 @@
             ctx.font = "bold 20px 'Courier New', monospace";
             ctx.fillText(`High score: ${sessionHighScore.get()}`, centerX, centerY + 58 + (1 - fade) * 8);
             ctx.font = "20px 'Courier New', monospace";
-            ctx.fillText("Press R to restart", centerX, centerY + 86 + (1 - fade) * 10);
+            ctx.fillText("Tap or press R to restart", centerX, centerY + 86 + (1 - fade) * 10);
             ctx.restore();
         }
 

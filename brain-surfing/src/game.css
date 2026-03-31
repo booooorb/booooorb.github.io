@@ -8,6 +8,7 @@
   --ui-shadow: 3px 3px 0 rgba(68, 39, 39, 0.18);
   --ui-shadow-strong: 4px 4px 0 rgba(68, 39, 39, 0.22);
   --ui-shadow-pressed: 2px 2px 0 rgba(68, 39, 39, 0.16);
+  --top-bar-height: 44px;
 }
 
 *,
@@ -79,6 +80,7 @@ body {
   display: flex;
   align-items: center;
   justify-content: space-between;
+  min-height: var(--top-bar-height);
   padding: 8px 16px;
   font-size: 0.9rem;
   background: #ffffff;
@@ -204,7 +206,10 @@ body.game-over .title {
 .dataset-buttons button,
 .upload-label span,
 #info-toggle,
-.channel-select {
+.channel-select,
+.mobile-info-link,
+.info-page-tab,
+.info-page-back {
   display: inline-flex;
   align-items: center;
   justify-content: center;
@@ -223,12 +228,16 @@ body.game-over .title {
     background-color 0.2s ease,
     transform 0.16s ease,
     box-shadow 0.2s ease;
+  text-decoration: none;
 }
 
 .dataset-buttons button:hover,
 .upload-label span:hover,
 #info-toggle:hover,
-.channel-select:hover {
+.channel-select:hover,
+.mobile-info-link:hover,
+.info-page-tab:hover,
+.info-page-back:hover {
   background: #333;
   box-shadow: var(--ui-shadow-strong);
   transform: translateY(-1px);
@@ -236,7 +245,9 @@ body.game-over .title {
 
 .dataset-buttons button:active,
 .upload-label span:active,
-#info-toggle:active {
+#info-toggle:active,
+.mobile-info-link:active,
+.info-page-back:active {
   transform: translateY(1px);
   box-shadow: var(--ui-shadow-pressed);
 }
@@ -249,6 +260,12 @@ body.game-over .title {
 .upload-label {
   display: inline-block;
   cursor: pointer;
+}
+
+.mobile-info-link {
+  display: none;
+  width: 100%;
+  margin-top: 4px;
 }
 
 #channel-controls {
@@ -414,6 +431,79 @@ body.scene-enter #eeg-info:not(.collapsed) {
   text-decoration: underline;
 }
 
+.info-page {
+  min-height: 100vh;
+  overflow: auto;
+  background:
+    linear-gradient(180deg, rgba(234, 231, 217, 0.92), rgba(255, 255, 255, 0.98)),
+    #ffffff;
+}
+
+.info-page-main {
+  padding: 20px 16px 32px;
+}
+
+.info-page-shell {
+  width: min(720px, 100%);
+  margin: 0 auto;
+  padding: 24px 20px;
+  border: 1px solid rgba(68, 39, 39, 0.12);
+  border-radius: 20px;
+  background: rgba(255, 255, 255, 0.88);
+  box-shadow: var(--ui-shadow);
+}
+
+.info-page-intro h1 {
+  margin: 0 0 10px;
+  font-size: clamp(1.8rem, 4vw, 2.6rem);
+  line-height: 1.05;
+}
+
+.info-page-intro p {
+  margin: 0;
+  line-height: 1.5;
+}
+
+.info-page-eyebrow {
+  margin-bottom: 8px;
+  font-size: 0.78rem;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--muted);
+}
+
+.info-page-nav {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 10px;
+  margin: 24px 0 20px;
+}
+
+.info-page-tab {
+  flex-direction: column;
+  gap: 4px;
+  min-height: 64px;
+}
+
+.info-page-tab span {
+  font-size: 0.7rem;
+  opacity: 0.82;
+}
+
+.info-page-tab.active {
+  background: #4c5f3b;
+  border-color: #4c5f3b;
+}
+
+.info-page-content .info-section:first-child {
+  margin-top: 0;
+}
+
+.info-page-actions {
+  margin-top: 24px;
+}
+
 .instructions-panel p {
   margin: 0 0 8px;
 }
@@ -436,21 +526,97 @@ kbd {
 @media (max-width: 900px) {
   html,
   body {
-    overflow: auto;
+    height: 100%;
+    overflow: hidden;
+  }
+
+  .wrapper {
+    min-height: 100svh;
   }
 
   #game-canvas {
-    height: 75vh;
-    min-height: 720px;
+    height: calc(100svh - var(--top-bar-height));
+    min-height: 0;
   }
 
-  .hud-top-left,
-  .hud-bottom-left {
-    width: calc(100vw - 16px);
+  .game-area {
+    height: calc(100svh - var(--top-bar-height));
+    overflow: hidden;
+  }
+
+  .top-bar {
+    padding: 8px 12px;
+  }
+
+  .hud-top-left {
+    top: auto;
+    right: 12px;
+    bottom: calc(env(safe-area-inset-bottom, 0px) + 10px);
+    left: 12px;
+    width: auto;
     max-width: none;
   }
 
-  .instructions-panel {
-    background: rgba(255, 255, 255, 0.72);
+  #dataset-controls {
+    padding: 10px;
+    border-radius: 16px;
+    background: rgba(255, 255, 255, 0.9);
+    backdrop-filter: blur(12px);
+  }
+
+  .hud-title {
+    margin-bottom: 8px;
+  }
+
+  .dataset-buttons {
+    display: grid;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: 8px;
+    margin: 0;
+  }
+
+  .dataset-buttons button,
+  .upload-label span,
+  .mobile-info-link {
+    width: 100%;
+    min-height: 42px;
+    padding: 10px 8px;
+    font-size: 13px;
+  }
+
+  .mobile-info-link {
+    display: inline-flex;
+  }
+
+  #channel-controls,
+  #info-toggle,
+  #eeg-info,
+  #controls-panel {
+    display: none;
+  }
+
+  #eeg-status {
+    top: calc(var(--top-bar-height) + 8px);
+    left: 12px;
+    max-width: calc(100vw - 24px);
+    padding: 4px 8px;
+    font-size: 11px;
+  }
+
+  .info-page-main {
+    padding: 14px 12px 24px;
+  }
+
+  .info-page-shell {
+    padding: 18px 14px;
+    border-radius: 16px;
+  }
+
+  .info-page-nav {
+    grid-template-columns: 1fr;
+  }
+
+  .info-page-tab {
+    min-height: 52px;
   }
 }
