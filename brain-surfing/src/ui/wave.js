@@ -104,21 +104,101 @@
             ctx.restore();
         }
 
+        function traceWaveRidge(ctx, yOffset) {
+            const offset = Number.isFinite(yOffset) ? yOffset : 0;
+
+            for (let x = 0; x < viewport.width; x += 1) {
+                const y = state.terrainProfile[x] + offset;
+                if (x === 0) ctx.moveTo(x + 0.5, y + 0.5);
+                else ctx.lineTo(x + 0.5, y + 0.5);
+            }
+        }
+
+        function traceWaveBody(ctx, yOffset) {
+            ctx.beginPath();
+            traceWaveRidge(ctx, yOffset);
+            ctx.lineTo(viewport.width - 0.5, state.groundY + 0.5);
+            ctx.lineTo(0.5, state.groundY + 0.5);
+            ctx.closePath();
+        }
+
+        function drawWaveTexture(ctx) {
+            const time = state.eegTime || 0;
+            const bandCount = 3;
+
+            ctx.save();
+            ctx.lineCap = "round";
+            ctx.lineJoin = "round";
+
+            for (let band = 0; band < bandCount; band += 1) {
+                const depth = 14 + band * 24;
+                const amplitude = 2.3 + band * 0.55;
+                const frequency = 0.0105 + band * 0.0012;
+                const speed = 0.26 + band * 0.05;
+                const alpha = Math.max(0.03, 0.09 - band * 0.018);
+                const phase = time * speed + band * 1.1;
+
+                ctx.beginPath();
+                ctx.lineWidth = 1;
+                ctx.strokeStyle = `rgba(68, 39, 39, ${alpha})`;
+
+                for (let x = 0; x < viewport.width; x += 16) {
+                    const terrainY = state.terrainProfile[x];
+                    const ripple = Math.sin(x * frequency + phase) * amplitude;
+                    const drift = Math.cos(x * 0.005 + phase * 0.7) * 1.5;
+                    const y = Math.min(state.groundY - 4, terrainY + depth + ripple + drift);
+
+                    if (x === 0) ctx.moveTo(x + 0.5, y + 0.5);
+                    else ctx.lineTo(x + 0.5, y + 0.5);
+                }
+
+                ctx.stroke();
+            }
+
+            ctx.strokeStyle = "rgba(68, 39, 39, 0.08)";
+            ctx.lineWidth = 1;
+            for (let x = 12; x < viewport.width; x += 34) {
+                const terrainY = state.terrainProfile[x];
+                const startY = Math.min(state.groundY - 10, terrainY + 8 + Math.sin(time * 0.35 + x * 0.01) * 2);
+                const endY = Math.min(state.groundY - 6, startY + 10);
+
+                ctx.beginPath();
+                ctx.moveTo(x + 0.5, startY + 0.5);
+                ctx.lineTo(x + 5.5, endY + 0.5);
+                ctx.stroke();
+            }
+
+            ctx.restore();
+        }
+
         function drawWave(ctx) {
             if (state.terrainProfile.length !== viewport.width) return;
 
+            ctx.save();
+            traceWaveBody(ctx);
+            ctx.clip();
+            drawWaveTexture(ctx);
+            ctx.restore();
+
+            ctx.save();
             ctx.beginPath();
+            traceWaveRidge(ctx, 8);
+            ctx.lineTo(viewport.width - 0.5, state.groundY + 0.5);
+            ctx.lineTo(0.5, state.groundY + 0.5);
+            ctx.closePath();
+            ctx.fillStyle = "rgba(68, 39, 39, 0.06)";
+            ctx.fill();
+            ctx.restore();
+
+            ctx.save();
+            ctx.beginPath();
+            traceWaveRidge(ctx, 0);
             ctx.lineWidth = 3;
             ctx.lineJoin = "round";
             ctx.lineCap = "round";
-
-            for (let x = 0; x < viewport.width; x += 1) {
-                if (x === 0) ctx.moveTo(x + 0.5, state.terrainProfile[x] + 0.5);
-                else ctx.lineTo(x + 0.5, state.terrainProfile[x] + 0.5);
-            }
-
             ctx.strokeStyle = "#000";
             ctx.stroke();
+            ctx.restore();
         }
 
         function drawWaveProbe(ctx) {
