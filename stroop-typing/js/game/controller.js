@@ -233,20 +233,61 @@ export function createGameController(elements, arena, sound) {
   }
 
   function bindEvents() {
-    elements.modeCongruent.addEventListener("click", () => setMode(MODES.congruent.key));
-    elements.modeIncongruent.addEventListener("click", () => setMode(MODES.incongruent.key));
+    elements.modeCongruent.addEventListener("click", () => {
+      setMode(MODES.congruent.key);
+      focusAnswer();
+    });
+    elements.modeIncongruent.addEventListener("click", () => {
+      setMode(MODES.incongruent.key);
+      focusAnswer();
+    });
     elements.skipWarmup.addEventListener("click", completeWarmup);
     elements.restart.addEventListener("click", restart);
 
     document.addEventListener("pointerdown", (event) => {
       const target = event.target;
+      if (target instanceof Element && target.closest("button")) {
+        return;
+      }
+
+      if (target instanceof Element && target.closest("input, textarea, select, [contenteditable='true']")) {
+        focusAnswer();
+        return;
+      }
+
+      const handledByArena = arena.handlePointerDown(event);
+      if (handledByArena) {
+        event.preventDefault();
+      }
+
       if (!(target instanceof Element)) {
         focusAnswer();
         return;
       }
 
-      if (target.closest("button")) return;
       focusAnswer();
+    });
+
+    window.addEventListener("pointermove", (event) => {
+      const handledByArena = arena.handlePointerMove(event);
+      if (handledByArena) {
+        event.preventDefault();
+      }
+    });
+
+    window.addEventListener("pointerup", (event) => {
+      const handledByArena = arena.handlePointerUp(event);
+      if (handledByArena) {
+        event.preventDefault();
+        focusAnswer();
+      }
+    });
+
+    window.addEventListener("pointercancel", (event) => {
+      const handledByArena = arena.handlePointerCancel(event);
+      if (handledByArena) {
+        focusAnswer();
+      }
     });
 
     elements.answer.addEventListener("keydown", (event) => {

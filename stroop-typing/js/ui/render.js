@@ -6,10 +6,18 @@ function clearNode(node) {
   }
 }
 
+function renderMiniText(elements, text, { tutorial = false } = {}) {
+  elements.mini.classList.toggle("is-tutorial", tutorial);
+  elements.mini.innerHTML = tutorial
+    ? `<span class="miniEyebrow">tutorial</span><span class="miniMessage">${text}</span>`
+    : text;
+}
+
 function setStimulusState(stimulusEl, text, { color = "", compact = false } = {}) {
   stimulusEl.textContent = text;
   stimulusEl.style.color = color;
   stimulusEl.classList.toggle("is-idle", compact);
+  stimulusEl.classList.remove("is-result");
 }
 
 function syncModeButtons(elements, mode) {
@@ -32,14 +40,14 @@ export function renderPrompt(stimulusEl, prompt) {
 export function renderMode(elements, mode) {
   syncModeButtons(elements, mode);
   elements.statusPill.textContent = MODES[mode].label;
-  elements.mini.textContent = MODES[mode].helper;
+  renderMiniText(elements, MODES[mode].helper);
   elements.skipWarmup.hidden = true;
 }
 
 export function renderWarmupState(elements, mode, step, total) {
   syncModeButtons(elements, mode);
   elements.statusPill.textContent = "warm up";
-  elements.mini.textContent = `tutorial ${step}/${total} - type the ink color, not the word`;
+  renderMiniText(elements, `${step}/${total}  Type the ink color. Ignore the word itself.`, { tutorial: true });
   elements.skipWarmup.hidden = false;
 }
 
@@ -89,7 +97,11 @@ export function renderResult(elements, message, wpm) {
   elements.answer.value = "";
   renderOverlay(elements, "", "");
   elements.answer.blur();
-  setStimulusState(elements.stimulus, message || "finished", { compact: false });
+  elements.stimulus.textContent = "";
+  elements.stimulus.style.color = "";
+  elements.stimulus.classList.remove("is-idle");
+  elements.stimulus.classList.add("is-result");
+  elements.stimulus.innerHTML = `<span class="resultLead">time!</span><span class="resultMeta">wpm:</span><span class="resultValue">${wpm}</span>`;
   elements.wpm.textContent = String(wpm);
   elements.skipWarmup.hidden = true;
   flashStimulus(elements.stimulus);
