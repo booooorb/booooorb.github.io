@@ -395,33 +395,38 @@ body {
 }
 
 @media (max-width: 720px) {
+  body {
+    overflow-x: hidden;
+    overflow-y: auto;
+  }
+
   .app {
-    width: min(100vw - 24px, 480px);
-    min-height: 100svh;
-    padding-top: 16px;
-    padding-bottom: 18px;
-    gap: 16px;
+    width: min(100vw - 20px, 430px);
+    min-height: auto;
+    padding-top: max(12px, env(safe-area-inset-top));
+    padding-bottom: max(18px, env(safe-area-inset-bottom));
+    gap: 12px;
   }
 
   .top {
-    flex-direction: column;
-    align-items: flex-start;
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) auto;
+    align-items: end;
     gap: 12px;
   }
 
   .title {
-    font-size: 20px;
-    letter-spacing: 0.14em;
+    font-size: 18px;
+    letter-spacing: 0.12em;
   }
 
   .right {
-    width: 100%;
-    justify-content: space-between;
+    width: auto;
     gap: 16px;
   }
 
   .stat {
-    min-width: 0;
+    min-width: 72px;
   }
 
   .label {
@@ -429,13 +434,14 @@ body {
   }
 
   .value {
-    font-size: clamp(24px, 8vw, 34px);
+    margin-top: 4px;
+    font-size: clamp(22px, 7vw, 30px);
   }
 
   .bar {
     flex-direction: column;
     align-items: stretch;
-    gap: 10px;
+    gap: 8px;
   }
 
   .modes,
@@ -443,48 +449,54 @@ body {
     width: 100%;
   }
 
-  .modes .btn {
-    flex: 1 1 0;
-    min-width: 0;
+  .modes {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 10px;
   }
 
   .actions {
     justify-content: flex-start;
     gap: 10px;
+    align-items: center;
   }
 
   .actions .btn {
-    flex: 1 1 auto;
+    flex: 1 1 120px;
   }
 
-  #restart {
-    flex: 0 0 auto;
+  .modes .btn,
+  .actions .btn {
+    width: 100%;
+    min-width: 0;
   }
 
   #statusPill {
     width: 100%;
     order: -1;
     text-align: center;
+    font-size: 12px;
   }
 
   .btn {
-    padding: 12px 14px;
+    padding: 11px 12px;
     font-size: 13px;
   }
 
   .stimulus {
-    font-size: clamp(52px, 18vw, 86px);
-    letter-spacing: 0.04em;
+    min-height: 0.95em;
+    font-size: clamp(44px, 18vw, 76px);
+    letter-spacing: 0.03em;
     line-height: 0.92;
   }
 
   .stimulus.is-idle {
-    font-size: clamp(24px, 7vw, 38px);
-    letter-spacing: 0.1em;
+    font-size: clamp(22px, 7vw, 32px);
+    letter-spacing: 0.08em;
   }
 
   .stimulus.is-result {
-    font-size: clamp(34px, 11vw, 56px);
+    font-size: clamp(30px, 10vw, 48px);
     line-height: 1.05;
   }
 
@@ -505,42 +517,91 @@ body {
 
   .inputWrap {
     width: 100%;
+    max-width: none;
     padding-inline: 0;
   }
 
   .answer,
   .typedOverlay {
-    padding: 14px 0 12px;
-    font-size: clamp(28px, 10vw, 42px);
+    padding: 12px 0 10px;
+    font-size: clamp(24px, 9vw, 36px);
   }
 
   .mini {
-    min-height: 36px;
-    font-size: 12px;
+    min-height: 28px;
+    font-size: 11px;
   }
 
   .mini.is-tutorial {
     width: 100%;
-    margin-top: 4px;
-    padding: 12px 14px 14px;
+    max-width: none;
+    margin-top: 2px;
+    padding: 11px 12px 12px;
+  }
+
+  .miniEyebrow {
+    margin-bottom: 4px;
+    font-size: 10px;
   }
 
   .miniMessage {
-    font-size: 17px;
+    font-size: 16px;
   }
 
   .stage {
-    min-height: 0;
-    padding: 6px 0 12px;
-    gap: 14px;
+    min-height: auto;
+    padding: 4px 0 8px;
+    gap: 12px;
     align-content: start;
     justify-content: center;
-    transform: translateY(-18px);
+    transform: none;
   }
 
   .arena {
-    opacity: 0.9;
-    transform: translateY(48px);
+    opacity: 0.84;
+    transform: translateY(96px);
+  }
+}
+
+@media (max-width: 420px) {
+  .right {
+    gap: 10px;
   }
 
+  .stat {
+    min-width: 64px;
+  }
+
+  .value {
+    font-size: clamp(20px, 6.8vw, 28px);
+  }
+
+  .stimulus {
+    font-size: clamp(40px, 17vw, 64px);
+  }
+
+  .btn {
+    padding-inline: 10px;
+  }
+}
+
+@media (min-width: 721px) and (max-height: 860px) {
+  .app {
+    gap: 22px;
+  }
+
+  .stage {
+    gap: 16px;
+    transform: translateY(-138px);
+  }
+
+  .mini.is-tutorial {
+    margin-top: 4px;
+    padding-top: 12px;
+    padding-bottom: 13px;
+  }
+
+  .arena {
+    transform: translateY(30px);
+  }
 }
