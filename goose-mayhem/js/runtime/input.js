@@ -147,6 +147,10 @@
     toggleShop();
   }
 
+  function handleStoreCloseClick() {
+    toggleShop(false);
+  }
+
   function handleStoreListClick(event) {
     if (!(event.target instanceof HTMLElement)) {
       return;

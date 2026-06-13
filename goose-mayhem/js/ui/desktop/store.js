@@ -6,13 +6,13 @@
     if (appId === "antiMalware") return "AM";
     if (appId === "recycleBin") return "RB";
     if (appId === "taskManager") return "TM";
-    if (appId === "flamethrower") return "FL";
-    if (appId === "katana") return "KA";
+    if (appId === "flamethrower") return "";
+    if (appId === "katana") return "";
     if (appId === "nuke") return "NK";
-    if (appId === "thunder") return "TH";
+    if (appId === "thunder") return "";
     if (appId === "gauntlet") return "IG";
     if (appId === "bread") return "BR";
-    if (appId === "fist") return "FI";
+    if (appId === "fist") return "";
     return appId.slice(0, 2).toUpperCase();
   }
 
@@ -21,7 +21,12 @@
       currencyValue.textContent = String(state.currency);
     }
     if (storeToggle) {
-      storeToggle.textContent = state.shop.open ? "Hide Apps" : "Buy Apps";
+      if (storeToggle.classList.contains("xp-start")) {
+        storeToggle.textContent = "start";
+        storeToggle.classList.toggle("xp-start--open", state.shop.open);
+      } else {
+        storeToggle.textContent = state.shop.open ? "Hide Apps" : "Buy Apps";
+      }
       storeToggle.setAttribute("aria-expanded", state.shop.open ? "true" : "false");
     }
     if (storePanel) {

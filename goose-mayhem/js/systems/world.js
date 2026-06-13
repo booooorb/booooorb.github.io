@@ -548,8 +548,8 @@
 
   function cargoCloseRect(cargo) {
     return {
-      x: cargo.pos.x + 10,
-      y: cargo.pos.y + 5,
+      x: cargo.pos.x + cargo.width - CLOSE_BUTTON_SIZE - 5,
+      y: cargo.pos.y + 4,
       width: CLOSE_BUTTON_SIZE,
       height: CLOSE_BUTTON_SIZE,
     };
@@ -634,46 +634,70 @@
     const showClose = options.showClose !== false;
     const showFrame = options.showFrame !== false;
     const hovered = !!options.hovered;
+    const titleBarHeight = 25;
 
-    ctx.fillStyle = COLORS.cargoPaper;
+    ctx.fillStyle = "#ece9d8";
     ctx.fillRect(0, 0, cargo.width, cargo.height);
-    ctx.fillStyle = cargo.bar;
-    ctx.fillRect(0, 0, cargo.width, 25);
+
+    const titleGradient = ctx.createLinearGradient(0, 0, cargo.width, 0);
+    titleGradient.addColorStop(0, "#0a246a");
+    titleGradient.addColorStop(0.58, "#2f6fd1");
+    titleGradient.addColorStop(1, "#75a7ef");
+    ctx.fillStyle = titleGradient;
+    ctx.fillRect(2, 2, cargo.width - 4, titleBarHeight - 3);
 
     if (showFrame) {
-      ctx.strokeStyle = COLORS.cargoStroke;
+      ctx.strokeStyle = "#ffffff";
       ctx.lineWidth = 1;
-      ctx.strokeRect(0, 0, cargo.width, cargo.height);
+      ctx.strokeRect(0.5, 0.5, cargo.width - 1, cargo.height - 1);
+      ctx.strokeStyle = "#7f9db9";
+      ctx.strokeRect(1.5, 1.5, cargo.width - 3, cargo.height - 3);
+      ctx.strokeStyle = "#404040";
+      ctx.strokeRect(0.5, 0.5, cargo.width - 1, cargo.height - 1);
     }
 
-    let titleX = 15;
+    const titleX = 8;
     if (showClose) {
-      ctx.fillStyle = hovered ? "rgba(255, 138, 128, 0.92)" : "rgba(255, 244, 239, 0.92)";
-      ctx.fillRect(10, 5, CLOSE_BUTTON_SIZE, CLOSE_BUTTON_SIZE);
-      ctx.strokeStyle = hovered ? "rgba(124, 38, 24, 0.76)" : "rgba(68, 44, 34, 0.45)";
-      ctx.strokeRect(10, 5, CLOSE_BUTTON_SIZE, CLOSE_BUTTON_SIZE);
+      const closeX = cargo.width - CLOSE_BUTTON_SIZE - 5;
+      const closeY = 4;
+      const closeGradient = ctx.createLinearGradient(closeX, closeY, closeX, closeY + CLOSE_BUTTON_SIZE);
+      closeGradient.addColorStop(0, hovered ? "#ffb19d" : "#f6b7a7");
+      closeGradient.addColorStop(0.45, hovered ? "#f26348" : "#df5c45");
+      closeGradient.addColorStop(1, hovered ? "#a92214" : "#8f1f12");
+      ctx.fillStyle = closeGradient;
+      ctx.fillRect(closeX, closeY, CLOSE_BUTTON_SIZE, CLOSE_BUTTON_SIZE);
+      ctx.strokeStyle = "#ffffff";
+      ctx.strokeRect(closeX + 0.5, closeY + 0.5, CLOSE_BUTTON_SIZE - 1, CLOSE_BUTTON_SIZE - 1);
+      ctx.strokeStyle = "#7a150d";
+      ctx.strokeRect(closeX, closeY, CLOSE_BUTTON_SIZE, CLOSE_BUTTON_SIZE);
+      ctx.strokeStyle = "#ffffff";
+      ctx.lineWidth = 1.6;
       ctx.beginPath();
-      ctx.moveTo(14, 9);
-      ctx.lineTo(10 + CLOSE_BUTTON_SIZE - 4, 5 + CLOSE_BUTTON_SIZE - 4);
-      ctx.moveTo(10 + CLOSE_BUTTON_SIZE - 4, 9);
-      ctx.lineTo(14, 5 + CLOSE_BUTTON_SIZE - 4);
+      ctx.moveTo(closeX + 5, closeY + 5);
+      ctx.lineTo(closeX + CLOSE_BUTTON_SIZE - 5, closeY + CLOSE_BUTTON_SIZE - 5);
+      ctx.moveTo(closeX + CLOSE_BUTTON_SIZE - 5, closeY + 5);
+      ctx.lineTo(closeX + 5, closeY + CLOSE_BUTTON_SIZE - 5);
       ctx.stroke();
-      titleX = 10 + CLOSE_BUTTON_SIZE + 10;
+      ctx.lineWidth = 1;
     }
 
-    ctx.fillStyle = "#2c251d";
-    ctx.font = `700 12px ${PLAYFUL_FONT}`;
-    ctx.fillText(cargo.title, titleX, 17);
+    ctx.fillStyle = "#ffffff";
+    ctx.font = `700 12px ${DESKTOP_FONT}`;
+    ctx.fillText(cargo.title, titleX, 18);
 
     if (cargo.kind === "meme" && cargo.imageAsset?.image) {
-      const contentX = 14;
-      const contentY = 35;
-      const contentWidth = cargo.width - 28;
-      const contentHeight = cargo.height - 49;
+      const contentX = 10;
+      const contentY = 34;
+      const contentWidth = cargo.width - 20;
+      const contentHeight = cargo.height - 44;
       const image = cargo.imageAsset.image;
 
-      ctx.fillStyle = "#eef2f4";
+      ctx.fillStyle = "#ffffff";
       ctx.fillRect(contentX, contentY, contentWidth, contentHeight);
+      ctx.strokeStyle = "#808080";
+      ctx.strokeRect(contentX - 0.5, contentY - 0.5, contentWidth + 1, contentHeight + 1);
+      ctx.strokeStyle = "#ffffff";
+      ctx.strokeRect(contentX + 0.5, contentY + 0.5, contentWidth - 1, contentHeight - 1);
 
       if (image.complete && image.naturalWidth > 0 && image.naturalHeight > 0) {
         const scale = Math.min(contentWidth / image.naturalWidth, contentHeight / image.naturalHeight);
@@ -683,17 +707,28 @@
         const drawY = contentY + (contentHeight - drawHeight) / 2;
         ctx.drawImage(image, drawX, drawY, drawWidth, drawHeight);
       } else {
-        ctx.fillStyle = "rgba(45, 35, 24, 0.72)";
-        ctx.font = `12px ${PLAYFUL_FONT}`;
+        ctx.fillStyle = "#1f1f1f";
+        ctx.font = `12px ${DESKTOP_FONT}`;
         ctx.fillText("goose meme loading", contentX + 12, contentY + contentHeight / 2);
       }
       return;
     }
 
-    ctx.font = `12px ${PLAYFUL_FONT}`;
-    ctx.fillStyle = "rgba(39, 27, 20, 0.78)";
+    const textX = 12;
+    const textY = 36;
+    const textWidth = cargo.width - 24;
+    const textHeight = cargo.height - 47;
+    ctx.fillStyle = "#ffffff";
+    ctx.fillRect(textX - 4, textY - 4, textWidth, textHeight);
+    ctx.strokeStyle = "#808080";
+    ctx.strokeRect(textX - 4.5, textY - 4.5, textWidth + 1, textHeight + 1);
+    ctx.strokeStyle = "#ffffff";
+    ctx.strokeRect(textX - 3.5, textY - 3.5, textWidth - 1, textHeight - 1);
+
+    ctx.font = `12px ${DESKTOP_FONT}`;
+    ctx.fillStyle = "#1f1f1f";
     for (let i = 0; i < cargo.lines.length; i += 1) {
-      ctx.fillText(cargo.lines[i], 15, 50 + i * 24);
+      ctx.fillText(cargo.lines[i], textX, 50 + i * 22);
     }
   }
 

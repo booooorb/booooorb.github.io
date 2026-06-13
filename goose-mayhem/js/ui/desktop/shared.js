@@ -7,14 +7,13 @@
     };
   }
 
-  function desktopLabelSelectionRect(rect, label) {
-    const fontSize = motionQuery.matches ? 10 : 11;
-    const labelWidth = Math.max(rect.width, Math.ceil(label.length * fontSize * 0.58) + 12);
-    const boxX = rect.x + rect.width / 2 - labelWidth / 2;
+  function desktopLabelSelectionRect(rect) {
+    const selectionWidth = rect.width + 22;
+    const boxX = rect.x + rect.width / 2 - selectionWidth / 2;
     return {
-      x: boxX - 4,
+      x: boxX,
       y: rect.y - 4,
-      width: labelWidth + 8,
+      width: selectionWidth,
       height: rect.height + 8,
     };
   }
@@ -55,11 +54,11 @@
   }
 
   function recycleBinIconSize() {
-    return motionQuery.matches ? 54 : 62;
+    return motionQuery.matches ? 66 : 78;
   }
 
   function recycleBinLabel() {
-    return motionQuery.matches ? "recycle bin" : "Recycle Bin";
+    return motionQuery.matches ? "trash-bin" : "trash-bin.app";
   }
 
   function defaultRecycleBinIconPos() {
@@ -94,7 +93,7 @@
   }
 
   function taskManagerLabel() {
-    return motionQuery.matches ? "task mgr" : "Task Manager";
+    return motionQuery.matches ? "task-mgr" : "task-manager.app";
   }
 
   function defaultTaskManagerIconPos() {

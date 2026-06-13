@@ -65,6 +65,7 @@
     canvas.addEventListener("click", handleCanvasClick);
 
     storeToggle?.addEventListener("click", handleStoreToggleClick);
+    storeClose?.addEventListener("click", handleStoreCloseClick);
     storeList?.addEventListener("click", handleStoreListClick);
     attributionClose?.addEventListener("click", closeAttributionModal);
     attributionOpen?.addEventListener("click", openAttributionModal);

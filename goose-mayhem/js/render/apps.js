@@ -40,6 +40,18 @@
     ctx.ellipse(size * 0.52, size + 12, size * 0.42, 9, 0, 0, TAU);
     ctx.fill();
 
+    const iconImage = state.recycleBin.iconImage;
+    if (iconImage?.complete && iconImage.naturalWidth > 0) {
+      ctx.save();
+      ctx.shadowColor = COLORS.recycleBinGlow;
+      ctx.shadowBlur = hovered ? 24 : 14;
+      ctx.drawImage(iconImage, size * 0.12, size * 0.12, size * 0.76, size * 0.82);
+      ctx.restore();
+      drawDesktopLabel(recycleBinLabel(), size * 0.5, size + 20);
+      ctx.restore();
+      return;
+    }
+
     ctx.save();
     ctx.shadowColor = COLORS.recycleBinGlow;
     ctx.shadowBlur = hovered ? 24 : 14;
@@ -159,6 +171,18 @@
     ctx.beginPath();
     ctx.ellipse(size * 0.5, size + 12, size * 0.42, 9, 0, 0, TAU);
     ctx.fill();
+
+    const iconImage = state.taskManager.iconImage;
+    if (iconImage?.complete && iconImage.naturalWidth > 0) {
+      ctx.save();
+      ctx.shadowColor = COLORS.taskManagerShadow;
+      ctx.shadowBlur = hovered ? 16 : 8;
+      ctx.drawImage(iconImage, size * 0.08, size * 0.08, size * 0.84, size * 0.84);
+      ctx.restore();
+      drawDesktopLabel(taskManagerLabel(), size * 0.5, size + 20);
+      ctx.restore();
+      return;
+    }
 
     roundedRectPath(4, 8, size - 8, size * 0.6, 10);
     ctx.fillStyle = hovered ? "rgba(238, 244, 255, 0.98)" : COLORS.taskManagerPanel;
@@ -468,6 +492,18 @@
     const selected = app.selected || state.antiMalware.drag.target === `app-icon:${appId}`;
     const pulse = Math.sin(state.time * 2.1 + appId.length) * 0.5 + 0.5;
     const palette = desktopToolPalette(appId);
+    const iconImage = appId === "flamethrower"
+      ? state.flamethrower.iconImage
+      : appId === "katana"
+        ? state.katana.iconImage
+        : appId === "thunder"
+          ? state.thunder.iconImage
+        : appId === "fist"
+          ? state.fist.iconImage
+          : null;
+    const hasLoadedIconImage = iconImage?.complete && iconImage.naturalWidth > 0;
+    const isBareImageIcon = appId === "flamethrower" || appId === "katana" || appId === "thunder" || appId === "fist";
+    const drawIconBackground = !isBareImageIcon;
 
     ctx.save();
     if (selected) {
@@ -475,25 +511,39 @@
     }
 
     ctx.translate(rect.x, rect.y);
-    ctx.fillStyle = "rgba(24, 46, 66, 0.18)";
-    ctx.beginPath();
-    ctx.ellipse(size * 0.5, size + 12, size * 0.42, 9, 0, 0, TAU);
-    ctx.fill();
+    if (!isBareImageIcon) {
+      ctx.fillStyle = "rgba(24, 46, 66, 0.18)";
+      ctx.beginPath();
+      ctx.ellipse(size * 0.5, size + 12, size * 0.42, 9, 0, 0, TAU);
+      ctx.fill();
+    }
 
-    ctx.save();
-    ctx.shadowColor = palette.glow;
-    ctx.shadowBlur = hovered ? 24 : 14;
-    roundedRectPath(0, 0, size, size, 15);
-    ctx.fillStyle = palette.body;
-    ctx.fill();
-    ctx.restore();
+    if (drawIconBackground) {
+      ctx.save();
+      ctx.shadowColor = palette.glow;
+      ctx.shadowBlur = hovered ? 24 : 14;
+      roundedRectPath(0, 0, size, size, 15);
+      ctx.fillStyle = palette.body;
+      ctx.fill();
+      ctx.restore();
 
-    roundedRectPath(0, 0, size, size, 15);
-    ctx.strokeStyle = palette.edge;
-    ctx.lineWidth = 1.5;
-    ctx.stroke();
+      roundedRectPath(0, 0, size, size, 15);
+      ctx.strokeStyle = palette.edge;
+      ctx.lineWidth = 1.5;
+      ctx.stroke();
+    }
 
-    drawDesktopToolGlyph(appId, size, pulse, selected);
+    if (hasLoadedIconImage) {
+      ctx.save();
+      ctx.shadowColor = palette.glow;
+      ctx.shadowBlur = hovered ? 12 : 6;
+      const iconDrawSize = size * 0.84;
+      const iconDrawOffset = (size - iconDrawSize) / 2;
+      ctx.drawImage(iconImage, iconDrawOffset, iconDrawOffset, iconDrawSize, iconDrawSize);
+      ctx.restore();
+    } else {
+      drawDesktopToolGlyph(appId, size, pulse, selected);
+    }
 
     drawDesktopLabel(desktopToolLabel(appId), size * 0.5, size + 20);
     ctx.restore();

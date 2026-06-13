@@ -2,6 +2,7 @@
   const canvas = document.getElementById("stageCanvas");
   const storeToggle = document.getElementById("storeToggle");
   const storePanel = document.getElementById("storePanel");
+  const storeClose = document.getElementById("storeClose");
   const storeList = document.getElementById("storeList");
   const storeHint = document.getElementById("storeHint");
   const currencyValue = document.getElementById("currencyValue");
@@ -37,9 +38,9 @@
   const HEX_DIGITS = Array.from({ length: 256 }, (_, index) => (
     index.toString(16).toUpperCase().padStart(2, "0")
   ));
-  const DESKTOP_FONT = '"Segoe UI", Tahoma, sans-serif';
-  const MONO_FONT = '"Consolas", "Lucida Console", monospace';
-  const PLAYFUL_FONT = '"Comic Sans MS", "Comic Sans", cursive';
+  const DESKTOP_FONT = 'Tahoma, "MS Sans Serif", "Segoe UI", sans-serif';
+  const MONO_FONT = DESKTOP_FONT;
+  const PLAYFUL_FONT = DESKTOP_FONT;
 
   const COLORS = {
     shadow: "rgba(31, 43, 52, 0.18)",
@@ -245,21 +246,27 @@
   ];
 
   const MEME_PATHS = [
-    "memes/Meme1.png",
-    "memes/Meme2.png",
-    "memes/Meme3.png",
-    "memes/Meme4.png",
-    "memes/Meme5.png",
-    "memes/Meme6.png",
-    "memes/Meme7.png",
-    "memes/selfie1.PNG",
-    "memes/selfie2.PNG",
-    "memes/selfie3.PNG",
-    "memes/selfie4.PNG",
-    "memes/selfie5.PNG",
-    "memes/selfie6.PNG",
-    "memes/selfie7.PNG",
+    "assets/memes/Meme1.png",
+    "assets/memes/Meme2.png",
+    "assets/memes/Meme3.png",
+    "assets/memes/Meme4.png",
+    "assets/memes/Meme5.png",
+    "assets/memes/Meme6.png",
+    "assets/memes/Meme7.png",
+    "assets/memes/selfie1.PNG",
+    "assets/memes/selfie2.PNG",
+    "assets/memes/selfie3.PNG",
+    "assets/memes/selfie4.PNG",
+    "assets/memes/selfie5.PNG",
+    "assets/memes/selfie6.PNG",
+    "assets/memes/selfie7.PNG",
   ];
+  const RECYCLE_BIN_ICON_PATH = "assets/icons/trash-bin.png";
+  const FIREFOX_ICON_PATH = "assets/icons/firefox.png";
+  const RIOT_GAMES_ICON_PATH = "assets/icons/riot-games.png";
+  const SNIPPING_TOOL_ICON_PATH = "assets/icons/snipping-tool.png";
+  const TASK_MANAGER_ICON_PATH = "assets/icons/task-manager.png";
+  const WEATHER_ICON_PATH = "assets/icons/weather.png";
 
   const HONK_TEXTS = [
     "HONK!",
@@ -282,51 +289,51 @@
   const DESKTOP_TOOL_APPS = [
     {
       id: "flamethrower",
-      name: "Flamethrower",
-      desktopLabel: "flamethrower.app",
-      shortLabel: "flame.app",
+      name: "firefox",
+      desktopLabel: "firefox.app",
+      shortLabel: "firefox",
       hotkey: "F",
     },
     {
       id: "katana",
-      name: "Katana",
-      desktopLabel: "katana.app",
-      shortLabel: "katana.app",
+      name: "snipping-tool",
+      desktopLabel: "snipping-tool.app",
+      shortLabel: "snipping",
       hotkey: "K",
     },
     {
       id: "nuke",
-      name: "Nuke",
+      name: "nuke",
       desktopLabel: "nuke.app",
       shortLabel: "nuke.app",
       hotkey: "N",
     },
     {
       id: "thunder",
-      name: "Thunder",
-      desktopLabel: "thunder.app",
-      shortLabel: "thunder.app",
+      name: "weather",
+      desktopLabel: "weather.app",
+      shortLabel: "weather",
       hotkey: "Y",
     },
     {
       id: "gauntlet",
-      name: "Infinity Gauntlet",
+      name: "gauntlet",
       desktopLabel: "gauntlet.app",
       shortLabel: "gauntlet.app",
       hotkey: "G",
     },
     {
       id: "bread",
-      name: "Bread",
+      name: "bread",
       desktopLabel: "bread.app",
       shortLabel: "bread.app",
       hotkey: "B",
     },
     {
       id: "fist",
-      name: "Fist",
-      desktopLabel: "fist.app",
-      shortLabel: "fist.app",
+      name: "riot-games",
+      desktopLabel: "riot-games.app",
+      shortLabel: "riot-games",
       hotkey: "H",
     },
   ];
@@ -334,23 +341,23 @@
   const STORE_APPS = [
     {
       id: "antiMalware",
-      name: "Anti-Malware",
+      name: "anti-malware",
       desktopLabel: "anti-malware.app",
       shortLabel: "anti-malware",
       price: 0,
     },
     {
       id: "recycleBin",
-      name: "Recycle Bin",
-      desktopLabel: "Recycle Bin",
-      shortLabel: "recycle bin",
+      name: "trash-bin",
+      desktopLabel: "trash-bin.app",
+      shortLabel: "trash-bin",
       price: 0,
     },
     {
       id: "taskManager",
-      name: "Task Manager",
-      desktopLabel: "Task Manager",
-      shortLabel: "task mgr",
+      name: "task-manager",
+      desktopLabel: "task-manager.app",
+      shortLabel: "task-mgr",
       price: 0,
     },
     ...DESKTOP_TOOL_APPS.map((app) => ({
@@ -446,6 +453,7 @@
       firing: false,
       grabbed: false,
       hovered: false,
+      iconImage: null,
       aimDir: pt(1, 0),
       flameParticles: [],
       smokeParticles: [],
@@ -455,6 +463,7 @@
     katana: {
       active: false,
       slicing: false,
+      iconImage: null,
       slashTrail: [],
       splitPieces: [],
       aimDir: norm(pt(-1, -0.45)),
@@ -488,6 +497,7 @@
       deployed: false,
       selected: false,
       iconPos: pt(),
+      iconImage: null,
       pulse: 0,
       suctionRadius: motionQuery.matches ? 132 : 168,
     },
@@ -496,6 +506,7 @@
       selected: false,
       windowOpen: false,
       iconPos: pt(),
+      iconImage: null,
       windowPos: pt(),
       width: 312,
       height: 252,
@@ -535,6 +546,7 @@
     },
     thunder: {
       active: false,
+      iconImage: null,
       pulse: 0,
       flash: 0,
       cursorJitter: 0,
@@ -549,6 +561,7 @@
     },
     fist: {
       active: false,
+      iconImage: null,
       pulse: 0,
       impactFlash: 0,
       cracks: [],
@@ -557,6 +570,30 @@
   };
 
   if (GOOSE_MAYHEM_ACTIVE && typeof Image === "function") {
+    state.recycleBin.iconImage = new Image();
+    state.recycleBin.iconImage.decoding = "async";
+    state.recycleBin.iconImage.src = RECYCLE_BIN_ICON_PATH;
+
+    state.flamethrower.iconImage = new Image();
+    state.flamethrower.iconImage.decoding = "async";
+    state.flamethrower.iconImage.src = FIREFOX_ICON_PATH;
+
+    state.fist.iconImage = new Image();
+    state.fist.iconImage.decoding = "async";
+    state.fist.iconImage.src = RIOT_GAMES_ICON_PATH;
+
+    state.katana.iconImage = new Image();
+    state.katana.iconImage.decoding = "async";
+    state.katana.iconImage.src = SNIPPING_TOOL_ICON_PATH;
+
+    state.taskManager.iconImage = new Image();
+    state.taskManager.iconImage.decoding = "async";
+    state.taskManager.iconImage.src = TASK_MANAGER_ICON_PATH;
+
+    state.thunder.iconImage = new Image();
+    state.thunder.iconImage.decoding = "async";
+    state.thunder.iconImage.src = WEATHER_ICON_PATH;
+
     state.memeImages = MEME_PATHS.map((src) => {
       const image = new Image();
       image.decoding = "async";
