@@ -1,0 +1,91 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <title>Desktop Goose Mayhem</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <link rel="stylesheet" href="style.css" />
+</head>
+<body>
+  <main
+    class="stage"
+    id="stage"
+    aria-label="Desktop Goose Mayhem stage full of geese."
+  >
+    <canvas class="stage-canvas" id="stageCanvas" aria-hidden="true"></canvas>
+    <a class="back-link" href="../index.html">&larr; back</a>
+    <div class="title-chip">Desktop Goose Mayhem</div>
+    <button class="credits-button" id="attributionOpen" type="button" aria-haspopup="dialog" aria-controls="attributionModal">
+      credits
+    </button>
+    <section class="intro-modal" id="attributionModal" aria-label="Project attribution" hidden>
+      <div class="intro-modal__scrim"></div>
+      <div class="intro-modal__card" role="dialog" aria-modal="true" aria-labelledby="attributionTitle">
+        <h2 class="intro-modal__title" id="attributionTitle">Goose Attribution</h2>
+        <p class="intro-modal__text">
+          The goose model and core goose behavior in this project are adapted from the itch.io game
+          <a href="https://samperson.itch.io/desktop-goose" target="_blank" rel="noreferrer">Desktop Goose</a>
+          by samperson.
+        </p>
+        <p class="intro-modal__text">
+          Goose Mayhem is a modification of that original game, expanded with new tools, app-store behavior,
+          desktop interactions, and destruction effects.
+        </p>
+        <button class="intro-modal__close" id="attributionClose" type="button">close</button>
+      </div>
+    </section>
+    <div class="store-hud">
+      <section class="store-panel" id="storePanel" aria-label="Desktop app shop" hidden>
+        <div class="store-panel__header">
+          <span>Goose App Store</span>
+          <span class="store-panel__sub" id="storeHint">
+            Buy apps, then double-click them on the desktop.
+          </span>
+        </div>
+        <div class="store-list" id="storeList"></div>
+      </section>
+      <div class="store-hud__bar">
+        <div class="wallet-chip">
+          <span class="wallet-chip__label">Honk Bucks</span>
+          <span class="wallet-chip__value" id="currencyValue">0</span>
+        </div>
+        <button class="store-toggle" id="storeToggle" type="button" aria-expanded="false" aria-controls="storePanel">
+          Buy Apps
+        </button>
+      </div>
+    </div>
+  </main>
+
+  <script src="js/core/core.js"></script>
+  <script src="js/systems/world.js"></script>
+  <script src="js/ui/desktop/shared.js"></script>
+  <script src="js/ui/desktop/system-apps.js"></script>
+  <script src="js/ui/desktop/store.js"></script>
+  <script src="js/tools/contracts.js"></script>
+  <script src="js/tools/core.js"></script>
+  <script src="js/tools/katana.js"></script>
+  <script src="js/tools/thunder.js"></script>
+  <script src="js/tools/bread.js"></script>
+  <script src="js/tools/fist.js"></script>
+  <script src="js/tools/particles.js"></script>
+  <script src="js/tools/gauntlet.js"></script>
+  <script src="js/tools/nuke.js"></script>
+  <script src="js/tools/flamethrower.js"></script>
+  <script src="js/tools/registry.js"></script>
+  <script src="js/systems/geese/tasks.js"></script>
+  <script src="js/systems/geese.js"></script>
+  <script src="js/render/cargo.js"></script>
+  <script src="js/render/apps.js"></script>
+  <script src="js/render/effects/geese.js"></script>
+  <script src="js/render/effects/nuke.js"></script>
+  <script src="js/render/effects/thunder.js"></script>
+  <script src="js/render/effects/bread.js"></script>
+  <script src="js/render/effects/currency.js"></script>
+  <script src="js/render/effects/fist.js"></script>
+  <script src="js/render/effects/flamethrower.js"></script>
+  <script src="js/runtime/render.js"></script>
+  <script src="js/runtime/update.js"></script>
+  <script src="js/runtime/input.js"></script>
+  <script src="js/runtime/bootstrap.js"></script>
+</body>
+</html>
