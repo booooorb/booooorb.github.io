@@ -42,7 +42,7 @@
     }
   }
 
-  function renderEffectLayer(flamethrower, katana, thunder, nuke, gauntlet, bread, fist) {
+  function renderEffectLayer(flamethrower, katana, thunder, nuke, gauntlet, bread, paint, fist) {
     gauntlet.animation.drawDust();
     drawRecycleBinEffect();
     drawAntiMalwareConnection();
@@ -59,6 +59,7 @@
     katana.animation.drawCursor();
     thunder.animation.drawCursor();
     bread.animation.drawCursor();
+    paint.animation.drawCursor();
     fist.animation.drawCursor();
     flamethrower.animation.drawReticle();
     nuke.animation.drawEffects();
@@ -74,6 +75,7 @@
     const nuke = toolManager.get("nuke");
     const gauntlet = toolManager.get("gauntlet");
     const bread = toolManager.get("bread");
+    const paint = toolManager.get("paint");
     const fist = toolManager.get("fist");
 
     ctx.setTransform(1, 0, 0, 1, 0, 0);
@@ -82,5 +84,5 @@
 
     renderDesktopLayer(katana, fist);
     renderGeeseLayer();
-    renderEffectLayer(flamethrower, katana, thunder, nuke, gauntlet, bread, fist);
+    renderEffectLayer(flamethrower, katana, thunder, nuke, gauntlet, bread, paint, fist);
   }

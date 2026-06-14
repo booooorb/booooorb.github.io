@@ -603,7 +603,10 @@ body {
 }
 
 .store-card__icon--antiMalware {
-  background: linear-gradient(180deg, #4cc687, #24945d);
+  border-color: transparent;
+  background: url("assets/icons/malwarebytes.png") center / var(--store-icon-image-size) var(--store-icon-image-size) no-repeat;
+  box-shadow: none;
+  text-shadow: none;
 }
 
 .store-card__icon--recycleBin {
@@ -631,7 +634,10 @@ body {
 }
 
 .store-card__icon--nuke {
-  background: linear-gradient(180deg, #d1a24f, #8f6a2a);
+  border-color: transparent;
+  background: url("assets/icons/nuke.png") center / var(--store-icon-image-size) var(--store-icon-image-size) no-repeat;
+  box-shadow: none;
+  text-shadow: none;
 }
 
 .store-card__icon--thunder {

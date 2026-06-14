@@ -45,6 +45,18 @@
       return true;
     }
 
+    if (state.paint.active) {
+      if (uiTarget && !state.paint.painting) {
+        setPointerHover(uiTarget);
+        return true;
+      }
+      if (state.paint.painting && !uiTarget) {
+        toolManager.get("paint").extend(previous, point);
+      }
+      clearPointerHover();
+      return true;
+    }
+
     if (state.nuke.active || state.fist.active || state.thunder.active || state.bread.active) {
       if (uiTarget) {
         setPointerHover(uiTarget);
@@ -89,6 +101,7 @@
     state.katana.slicing = false;
     state.flamethrower.firing = false;
     state.flamethrower.hovered = false;
+    state.paint.painting = false;
     clearPointerHover();
   }
 
@@ -119,6 +132,12 @@
       return;
     }
 
+    if (state.paint.active) {
+      toolManager.get("paint").begin(point);
+      clearPointerHover();
+      return;
+    }
+
     if (state.katana.active) {
       toolManager.get("katana").beginSlicing(point);
       return;
@@ -130,7 +149,7 @@
   }
 
   function hoveredUiTargetAfterPointerUp() {
-    if (!state.pointer.inside || state.katana.active || state.thunder.active || state.bread.active || state.fist.active) {
+    if (!state.pointer.inside || state.katana.active || state.thunder.active || state.bread.active || state.paint.active || state.fist.active) {
       return null;
     }
     return antiMalwareHitTarget(state.pointer.pos);
@@ -139,6 +158,7 @@
   function handleWindowPointerUp() {
     toolManager.get("katana").stopSlicing();
     toolManager.get("flamethrower").stopFiring();
+    toolManager.get("paint").stop();
     endAntiMalwareDrag();
     setPointerHover(hoveredUiTargetAfterPointerUp(), null);
   }
@@ -324,7 +344,7 @@
     state.pointer.inside = true;
     const uiTarget = antiMalwareHitTarget(point);
 
-    if ((state.flamethrower.active || state.katana.active || state.bread.active) && !uiTarget) {
+    if ((state.flamethrower.active || state.katana.active || state.bread.active || state.paint.active) && !uiTarget) {
       return;
     }
 

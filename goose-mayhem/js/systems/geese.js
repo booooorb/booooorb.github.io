@@ -807,7 +807,10 @@
   }
 
   function updateMovement(goose, dt) {
-    const haulingCargo = goose.task === TASKS.DRAG_TAB && goose.taskData?.stage === DRAG_STAGE.DRAGGING;
+    const haulingCargo = (
+      (goose.task === TASKS.DRAG_TAB && goose.taskData?.stage === DRAG_STAGE.DRAGGING)
+      || (goose.task === TASKS.PAINT_CLEANUP && goose.taskData?.stage === "hauling")
+    );
     const topSpeed = haulingCargo
       ? goose.walkSpeed * 0.78
       : goose.sprinting ? goose.runSpeed : goose.walkSpeed;
@@ -839,7 +842,10 @@
     }
 
     const nextPos = add(goose.pos, mul(goose.vel, dt));
-    goose.pos = goose.task === TASKS.DRAG_TAB
+    goose.pos = (
+      goose.task === TASKS.DRAG_TAB
+      || (goose.task === TASKS.PAINT_CLEANUP && goose.taskData?.stage === "hauling")
+    )
       ? clampExtendedPoint(nextPos)
       : clampPoint(nextPos);
     refreshGooseSpatialMembership(goose);
@@ -848,7 +854,7 @@
     goose.gait = mag(goose.vel) > 8 ? Math.sin(goose.poseClock * TAU) : 0;
     goose.rig.neckLerpPercent = lerp(
       goose.rig.neckLerpPercent,
-      goose.task === TASKS.DRAG_TAB ? 1 : goose.sprinting ? 0.65 : 0,
+      haulingCargo ? 1 : goose.sprinting ? 0.65 : 0,
       0.12
     );
 

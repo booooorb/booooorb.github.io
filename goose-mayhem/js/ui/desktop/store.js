@@ -3,7 +3,7 @@
   }
 
   function storeAppBadge(appId) {
-    if (appId === "antiMalware") return "AM";
+    if (appId === "antiMalware") return "";
     if (appId === "recycleBin") return "RB";
     if (appId === "taskManager") return "TM";
     if (appId === "flamethrower") return "";
@@ -22,7 +22,7 @@
     }
     if (storeToggle) {
       if (storeToggle.classList.contains("xp-start")) {
-        storeToggle.textContent = "start";
+        storeToggle.textContent = " Shop ";
         storeToggle.classList.toggle("xp-start--open", state.shop.open);
       } else {
         storeToggle.textContent = state.shop.open ? "Hide Apps" : "Buy Apps";

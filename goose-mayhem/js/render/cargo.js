@@ -86,6 +86,33 @@
     }
   }
 
+  function drawCargoPaintLayer(cargo) {
+    if (!cargo.paintStrokes?.length) {
+      return;
+    }
+
+    ctx.save();
+    ctx.beginPath();
+    ctx.rect(0, 0, cargo.width, cargo.height);
+    ctx.clip();
+    ctx.globalAlpha = 0.9;
+    ctx.fillStyle = "rgba(220, 18, 18, 0.96)";
+    ctx.strokeStyle = "rgba(146, 0, 0, 0.24)";
+    ctx.lineWidth = 1;
+    for (const stroke of cargo.paintStrokes) {
+      const wobble = Math.sin(state.time * 1.8 + stroke.wobble) * 0.08;
+      ctx.save();
+      ctx.translate(stroke.x, stroke.y);
+      ctx.rotate(wobble);
+      ctx.beginPath();
+      ctx.ellipse(0, 0, stroke.radius * 1.08, stroke.radius * 0.82, 0, 0, TAU);
+      ctx.fill();
+      ctx.stroke();
+      ctx.restore();
+    }
+    ctx.restore();
+  }
+
   function drawCargoSurfaceRegion(cargo, hovered, burning, malwareGlow, dustProgress, sourceRect, destRect) {
     if (sourceRect.width <= 0.5 || sourceRect.height <= 0.5 || destRect.width <= 0.5 || destRect.height <= 0.5) {
       return;
@@ -110,103 +137,64 @@
     const offset = sub(mouth, cargoCenter);
     const horizontal = Math.abs(offset.x) >= Math.abs(offset.y);
     const towardPositive = horizontal ? offset.x >= 0 : offset.y >= 0;
-    const capturedFraction = clamp(progress * 1.08, 0, 1);
-    const pinch = clamp(Math.pow(progress, 1.18), 0, 1);
+    const capturedFraction = clamp(progress * 1.24, 0.001, 1);
+    const pinch = clamp(Math.pow(progress, 0.92), 0, 1);
+    const collapse = clamp(Math.pow(progress, 2.15), 0, 1);
+    const mouthLocal = pt(
+      clamp(mouth.x - cargo.pos.x, cargo.width * 0.05, cargo.width * 0.95),
+      clamp(mouth.y - cargo.pos.y, cargo.height * 0.08, cargo.height * 0.92)
+    );
 
     if (horizontal) {
-      const suckedSourceWidth = cargo.width * capturedFraction;
-      const bodySourceWidth = Math.max(0, cargo.width - suckedSourceWidth);
-      const suckedDestWidth = Math.max(5, lerp(suckedSourceWidth, cargo.width * 0.07, pinch));
-      const bodyDestWidth = Math.max(0, cargo.width - suckedSourceWidth);
-      const suckedDestHeight = cargo.height * lerp(1, 0.18, pinch);
-      const suckedDestY = (cargo.height - suckedDestHeight) * 0.5;
-
-      if (towardPositive) {
+      const sliceCount = 32;
+      const sourceWidth = cargo.width / sliceCount;
+      for (let i = 0; i < sliceCount; i += 1) {
+        const sourceX = i * sourceWidth;
+        const sliceWidth = i === sliceCount - 1 ? cargo.width - sourceX : sourceWidth;
+        const t = (sourceX + sliceWidth * 0.5) / cargo.width;
+        const edgeT = towardPositive ? t : 1 - t;
+        const capturedT = clamp((edgeT - (1 - capturedFraction)) / capturedFraction, 0, 1);
+        const localPinch = clamp(Math.max(Math.pow(capturedT, 0.62) * pinch, collapse * 0.92), 0, 1);
+        const centerX = lerp(sourceX + sliceWidth * 0.5, mouthLocal.x, localPinch * 0.44 + collapse * 0.16);
+        const wobble = Math.sin(edgeT * TAU * 1.2 + state.time * 8.4 + cargo.id) * localPinch * progress * 4.8;
+        const centerY = lerp(cargo.height * 0.5, mouthLocal.y, localPinch * 0.84) + wobble;
+        const destWidth = Math.max(1.2, sliceWidth * lerp(1, 0.54, localPinch));
+        const destHeight = Math.max(3.5, cargo.height * lerp(1, 0.075, localPinch));
         drawCargoSurfaceRegion(
           cargo,
           hovered,
           burning,
           malwareGlow,
           dustProgress,
-          { x: 0, y: 0, width: bodySourceWidth, height: cargo.height },
-          { x: 0, y: 0, width: bodyDestWidth, height: cargo.height }
-        );
-        drawCargoSurfaceRegion(
-          cargo,
-          hovered,
-          burning,
-          malwareGlow,
-          dustProgress,
-          { x: bodySourceWidth, y: 0, width: suckedSourceWidth, height: cargo.height },
-          { x: bodyDestWidth, y: suckedDestY, width: suckedDestWidth, height: suckedDestHeight }
-        );
-      } else {
-        drawCargoSurfaceRegion(
-          cargo,
-          hovered,
-          burning,
-          malwareGlow,
-          dustProgress,
-          { x: suckedSourceWidth, y: 0, width: bodySourceWidth, height: cargo.height },
-          { x: suckedDestWidth, y: 0, width: bodyDestWidth, height: cargo.height }
-        );
-        drawCargoSurfaceRegion(
-          cargo,
-          hovered,
-          burning,
-          malwareGlow,
-          dustProgress,
-          { x: 0, y: 0, width: suckedSourceWidth, height: cargo.height },
-          { x: 0, y: suckedDestY, width: suckedDestWidth, height: suckedDestHeight }
+          { x: sourceX, y: 0, width: sliceWidth, height: cargo.height },
+          { x: centerX - destWidth * 0.5, y: centerY - destHeight * 0.5, width: destWidth, height: destHeight }
         );
       }
       return;
     }
 
-    const suckedSourceHeight = cargo.height * capturedFraction;
-    const bodySourceHeight = Math.max(0, cargo.height - suckedSourceHeight);
-    const suckedDestHeight = Math.max(5, lerp(suckedSourceHeight, cargo.height * 0.07, pinch));
-    const bodyDestHeight = Math.max(0, cargo.height - suckedSourceHeight);
-    const suckedDestWidth = cargo.width * lerp(1, 0.18, pinch);
-    const suckedDestX = (cargo.width - suckedDestWidth) * 0.5;
-
-    if (towardPositive) {
+    const sliceCount = 26;
+    const sourceHeight = cargo.height / sliceCount;
+    for (let i = 0; i < sliceCount; i += 1) {
+      const sourceY = i * sourceHeight;
+      const sliceHeight = i === sliceCount - 1 ? cargo.height - sourceY : sourceHeight;
+      const t = (sourceY + sliceHeight * 0.5) / cargo.height;
+      const edgeT = towardPositive ? t : 1 - t;
+      const capturedT = clamp((edgeT - (1 - capturedFraction)) / capturedFraction, 0, 1);
+      const localPinch = clamp(Math.max(Math.pow(capturedT, 0.62) * pinch, collapse * 0.92), 0, 1);
+      const wobble = Math.sin(edgeT * TAU * 1.15 + state.time * 8.4 + cargo.id) * localPinch * progress * 4.8;
+      const centerX = lerp(cargo.width * 0.5, mouthLocal.x, localPinch * 0.84) + wobble;
+      const centerY = lerp(sourceY + sliceHeight * 0.5, mouthLocal.y, localPinch * 0.44 + collapse * 0.16);
+      const destWidth = Math.max(3.5, cargo.width * lerp(1, 0.075, localPinch));
+      const destHeight = Math.max(1.2, sliceHeight * lerp(1, 0.54, localPinch));
       drawCargoSurfaceRegion(
         cargo,
         hovered,
         burning,
         malwareGlow,
         dustProgress,
-        { x: 0, y: 0, width: cargo.width, height: bodySourceHeight },
-        { x: 0, y: 0, width: cargo.width, height: bodyDestHeight }
-      );
-      drawCargoSurfaceRegion(
-        cargo,
-        hovered,
-        burning,
-        malwareGlow,
-        dustProgress,
-        { x: 0, y: bodySourceHeight, width: cargo.width, height: suckedSourceHeight },
-        { x: suckedDestX, y: bodyDestHeight, width: suckedDestWidth, height: suckedDestHeight }
-      );
-    } else {
-      drawCargoSurfaceRegion(
-        cargo,
-        hovered,
-        burning,
-        malwareGlow,
-        dustProgress,
-        { x: 0, y: suckedSourceHeight, width: cargo.width, height: bodySourceHeight },
-        { x: 0, y: suckedDestHeight, width: cargo.width, height: bodyDestHeight }
-      );
-      drawCargoSurfaceRegion(
-        cargo,
-        hovered,
-        burning,
-        malwareGlow,
-        dustProgress,
-        { x: 0, y: 0, width: cargo.width, height: suckedSourceHeight },
-        { x: suckedDestX, y: 0, width: suckedDestWidth, height: suckedDestHeight }
+        { x: 0, y: sourceY, width: cargo.width, height: sliceHeight },
+        { x: centerX - destWidth * 0.5, y: centerY - destHeight * 0.5, width: destWidth, height: destHeight }
       );
     }
   }
@@ -317,6 +305,8 @@
       drawCargoSurfaceLayer(cargo, hovered, burning, malwareGlow, dustProgress);
     }
     ctx.restore();
+
+    drawCargoPaintLayer(cargo);
 
     if (burnGeometry && vacuumProgress < 0.02) {
       const emberGlow = clamp(cargo.fireLevel * 0.92 + cargo.heat * 0.64 + damage * 0.26, 0, 1);
@@ -453,10 +443,42 @@
     const dir = mag(state.katana.aimDir) ? state.katana.aimDir : norm(pt(-1, -0.45));
     const angle = Math.atan2(dir.y, dir.x);
     const pulse = state.katana.slicing ? 1 : 0.7;
+    const effectImage = state.katana.effectImage;
 
     ctx.save();
     ctx.translate(state.pointer.pos.x, state.pointer.pos.y);
     ctx.rotate(angle);
+
+    if (effectImage?.complete && effectImage.naturalWidth > 0) {
+      const size = 78 + pulse * 9;
+      const snipperBladeOffset = -Math.PI * 0.75;
+      ctx.save();
+      ctx.rotate(snipperBladeOffset);
+      ctx.shadowColor = `rgba(126, 214, 255, ${0.18 + pulse * 0.18})`;
+      ctx.shadowBlur = state.katana.slicing ? 14 : 7;
+      ctx.drawImage(effectImage, -size * 0.5, -size * 0.5, size, size);
+      ctx.restore();
+
+      if (state.katana.slicing) {
+        ctx.globalCompositeOperation = "lighter";
+        ctx.strokeStyle = `rgba(160, 228, 255, ${0.24 + pulse * 0.2})`;
+        ctx.lineWidth = 14;
+        ctx.beginPath();
+        ctx.moveTo(-14, 0);
+        ctx.lineTo(56, 0);
+        ctx.stroke();
+
+        ctx.strokeStyle = `rgba(255, 255, 255, ${0.3 + pulse * 0.22})`;
+        ctx.lineWidth = 6;
+        ctx.beginPath();
+        ctx.moveTo(-8, 0);
+        ctx.lineTo(50, 0);
+        ctx.stroke();
+      }
+
+      ctx.restore();
+      return;
+    }
 
     ctx.fillStyle = `rgba(20, 27, 34, ${0.12 + pulse * 0.08})`;
     ctx.beginPath();

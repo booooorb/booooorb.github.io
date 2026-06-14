@@ -10,40 +10,53 @@
     const glow = state.flamethrower.firing
       ? 0.34 + pulse * 0.18
       : 0.18 + pulse * 0.08;
+    const effectImage = state.flamethrower.effectImage;
 
     ctx.save();
-    if (glow > 0) {
-      ctx.strokeStyle = `rgba(255, 198, 116, ${glow})`;
-      ctx.lineWidth = interactive ? 34 : 28;
+    if (effectImage?.complete && effectImage.naturalWidth > 0) {
+      const center = lerpPt(base, nozzle, 0.48);
+      const width = interactive ? 142 + pulse * 10 : 126 + pulse * 8;
+      const height = width * 0.78;
+      ctx.save();
+      ctx.translate(center.x, center.y);
+      ctx.shadowColor = `rgba(255, 126, 48, ${glow})`;
+      ctx.shadowBlur = state.flamethrower.firing ? 20 : 10;
+      ctx.drawImage(effectImage, -width * 0.5, -height * 0.5, width, height);
+      ctx.restore();
+    } else {
+      if (glow > 0) {
+        ctx.strokeStyle = `rgba(255, 198, 116, ${glow})`;
+        ctx.lineWidth = interactive ? 34 : 28;
+        ctx.beginPath();
+        ctx.moveTo(base.x, base.y);
+        ctx.lineTo(nozzle.x, nozzle.y);
+        ctx.stroke();
+      }
+
+      ctx.lineCap = "round";
+      ctx.strokeStyle = interactive ? "rgba(92, 99, 109, 0.96)" : "rgba(83, 90, 99, 0.94)";
+      ctx.lineWidth = 22;
       ctx.beginPath();
       ctx.moveTo(base.x, base.y);
       ctx.lineTo(nozzle.x, nozzle.y);
       ctx.stroke();
+
+      ctx.strokeStyle = "rgba(185, 194, 204, 0.82)";
+      ctx.lineWidth = 8;
+      ctx.beginPath();
+      ctx.moveTo(add(base, mul(perp(direction), -2.5)).x, add(base, mul(perp(direction), -2.5)).y);
+      ctx.lineTo(add(nozzle, mul(perp(direction), -1.2)).x, add(nozzle, mul(perp(direction), -1.2)).y);
+      ctx.stroke();
+
+      ctx.fillStyle = state.flamethrower.firing
+        ? `rgba(255, 150, 80, ${0.42 + pulse * 0.24})`
+        : interactive
+          ? "rgba(108, 114, 124, 0.96)"
+          : "rgba(73, 79, 88, 0.88)";
+      ctx.beginPath();
+      ctx.arc(nozzle.x, nozzle.y, 10, 0, TAU);
+      ctx.fill();
     }
-
-    ctx.lineCap = "round";
-    ctx.strokeStyle = interactive ? "rgba(92, 99, 109, 0.96)" : "rgba(83, 90, 99, 0.94)";
-    ctx.lineWidth = 22;
-    ctx.beginPath();
-    ctx.moveTo(base.x, base.y);
-    ctx.lineTo(nozzle.x, nozzle.y);
-    ctx.stroke();
-
-    ctx.strokeStyle = "rgba(185, 194, 204, 0.82)";
-    ctx.lineWidth = 8;
-    ctx.beginPath();
-    ctx.moveTo(add(base, mul(perp(direction), -2.5)).x, add(base, mul(perp(direction), -2.5)).y);
-    ctx.lineTo(add(nozzle, mul(perp(direction), -1.2)).x, add(nozzle, mul(perp(direction), -1.2)).y);
-    ctx.stroke();
-
-    ctx.fillStyle = state.flamethrower.firing
-      ? `rgba(255, 150, 80, ${0.42 + pulse * 0.24})`
-      : interactive
-        ? "rgba(108, 114, 124, 0.96)"
-        : "rgba(73, 79, 88, 0.88)";
-    ctx.beginPath();
-    ctx.arc(nozzle.x, nozzle.y, 10, 0, TAU);
-    ctx.fill();
 
     if (state.flamethrower.firing) {
       ctx.globalCompositeOperation = "lighter";

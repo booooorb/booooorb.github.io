@@ -110,10 +110,10 @@
         lerp(cargoCenter.x, center.x, 0.52),
         lerp(cargoCenter.y, center.y, 0.52)
       );
-      const curveAmount = (22 + progress * 34) * Math.sin(state.time * 8 + cargo.id * 0.9);
+      const curveAmount = (26 + progress * 44) * Math.sin(state.time * 8 + cargo.id * 0.9);
 
-      ctx.strokeStyle = `rgba(185, 235, 255, ${0.14 + progress * 0.18})`;
-      ctx.lineWidth = 6 + progress * 8;
+      ctx.strokeStyle = `rgba(185, 235, 255, ${0.18 + progress * 0.24})`;
+      ctx.lineWidth = 8 + progress * 10;
       ctx.beginPath();
       ctx.moveTo(cargoCenter.x, cargoCenter.y);
       ctx.quadraticCurveTo(
@@ -124,10 +124,10 @@
       );
       ctx.stroke();
 
-      ctx.strokeStyle = `rgba(233, 248, 255, ${0.24 + progress * 0.24})`;
-      ctx.lineWidth = 2 + progress * 3.4;
+      ctx.strokeStyle = `rgba(233, 248, 255, ${0.3 + progress * 0.3})`;
+      ctx.lineWidth = 2.4 + progress * 4.2;
       for (let strand = -1; strand <= 1; strand += 1) {
-        const offset = strand * (7 + progress * 7);
+        const offset = strand * (8 + progress * 9);
         ctx.beginPath();
         ctx.moveTo(cargoCenter.x + side.x * offset, cargoCenter.y + side.y * offset);
         ctx.quadraticCurveTo(
@@ -139,9 +139,9 @@
         ctx.stroke();
       }
 
-      ctx.fillStyle = `rgba(220, 245, 255, ${0.16 + progress * 0.28})`;
+      ctx.fillStyle = `rgba(220, 245, 255, ${0.2 + progress * 0.36})`;
       ctx.beginPath();
-      ctx.ellipse(center.x, center.y, 8 + progress * 16, 4 + progress * 9, Math.atan2(direction.y, direction.x), 0, TAU);
+      ctx.ellipse(center.x, center.y, 10 + progress * 20, 5 + progress * 12, Math.atan2(direction.y, direction.x), 0, TAU);
       ctx.fill();
     }
 
@@ -342,6 +342,14 @@
         glow: "rgba(255, 212, 128, 0.24)",
       };
     }
+    if (appId === "paint") {
+      return {
+        body: "rgba(255, 238, 238, 0.98)",
+        edge: "rgba(166, 64, 64, 0.38)",
+        text: "rgba(105, 28, 28, 0.9)",
+        glow: "rgba(255, 92, 92, 0.24)",
+      };
+    }
     return {
       body: "rgba(255, 230, 220, 0.98)",
       edge: "rgba(146, 91, 68, 0.38)",
@@ -466,6 +474,28 @@
       return;
     }
 
+    if (appId === "paint") {
+      ctx.save();
+      ctx.translate(size * 0.48, size * 0.48);
+      ctx.rotate(-0.65);
+      ctx.fillStyle = "rgba(132, 75, 32, 0.98)";
+      roundedRectPath(-5, -28, 10, 32, 4);
+      ctx.fill();
+      ctx.fillStyle = "rgba(58, 61, 68, 0.96)";
+      roundedRectPath(-8, 0, 16, 10, 3);
+      ctx.fill();
+      ctx.fillStyle = active ? "rgba(255, 28, 28, 0.98)" : "rgba(220, 24, 24, 0.96)";
+      ctx.beginPath();
+      ctx.moveTo(-9, 8);
+      ctx.quadraticCurveTo(0, 25, 9, 8);
+      ctx.lineTo(6, 28);
+      ctx.quadraticCurveTo(0, 36, -6, 28);
+      ctx.closePath();
+      ctx.fill();
+      ctx.restore();
+      return;
+    }
+
     ctx.fillStyle = COLORS.fistSkin;
     roundedRectPath(size * 0.22, size * 0.34, size * 0.44, size * 0.28, 10);
     ctx.fill();
@@ -496,13 +526,21 @@
       ? state.flamethrower.iconImage
       : appId === "katana"
         ? state.katana.iconImage
+        : appId === "nuke"
+          ? state.nuke.iconImage
         : appId === "thunder"
           ? state.thunder.iconImage
+        : appId === "gauntlet"
+          ? state.gauntlet.iconImage
+        : appId === "bread"
+          ? state.bread.iconImage
+        : appId === "paint"
+          ? state.paint.iconImage
         : appId === "fist"
           ? state.fist.iconImage
           : null;
     const hasLoadedIconImage = iconImage?.complete && iconImage.naturalWidth > 0;
-    const isBareImageIcon = appId === "flamethrower" || appId === "katana" || appId === "thunder" || appId === "fist";
+    const isBareImageIcon = appId === "flamethrower" || appId === "katana" || appId === "nuke" || appId === "thunder" || appId === "gauntlet" || appId === "bread" || appId === "paint" || appId === "fist";
     const drawIconBackground = !isBareImageIcon;
 
     ctx.save();
@@ -566,6 +604,7 @@
     const hovered = state.hoveredUiTarget === "anti-icon" || state.antiMalware.drag.target === "anti-icon";
     const selected = state.antiMalware.selected || state.antiMalware.drag.target === "anti-icon";
     const pulse = Math.sin(state.antiMalware.pulse * 1.7) * 0.5 + 0.5;
+    const iconImage = state.antiMalware.iconImage;
 
     ctx.save();
     if (selected) {
@@ -576,6 +615,19 @@
     ctx.beginPath();
     ctx.ellipse(size * 0.52, size + 12, size * 0.42, 9, 0, 0, TAU);
     ctx.fill();
+
+    if (iconImage?.complete && iconImage.naturalWidth > 0) {
+      ctx.save();
+      ctx.shadowColor = COLORS.antiMalwareGlow;
+      ctx.shadowBlur = hovered ? 22 : 12;
+      const iconDrawSize = size * 0.86;
+      const iconDrawOffset = (size - iconDrawSize) / 2;
+      ctx.drawImage(iconImage, iconDrawOffset, iconDrawOffset, iconDrawSize, iconDrawSize);
+      ctx.restore();
+      drawDesktopLabel(antiMalwareLabel(), size * 0.5, size + 20);
+      ctx.restore();
+      return;
+    }
 
     ctx.save();
     ctx.shadowColor = COLORS.antiMalwareGlow;
@@ -902,10 +954,10 @@
 
     ctx.fillStyle = COLORS.antiMalwareText;
     ctx.font = `600 12px ${DESKTOP_FONT}`;
-    ctx.fillText("anti-malware.app", rect.x + 36, rect.y + 20);
+    ctx.fillText("Malwarebytes", rect.x + 36, rect.y + 20);
 
     ctx.font = `700 13px ${DESKTOP_FONT}`;
-    ctx.fillText("ANTI-MALWARE v4.2", rect.x + 18, rect.y + 62);
+    ctx.fillText("MALWAREBYTES", rect.x + 18, rect.y + 62);
 
     ctx.font = `12px ${DESKTOP_FONT}`;
     ctx.fillStyle = COLORS.antiMalwareTextSoft;

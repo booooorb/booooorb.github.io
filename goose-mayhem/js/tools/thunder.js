@@ -16,6 +16,44 @@
     }, 220);
   }
 
+  function spawnWeatherRainDrop() {
+    const wind = Math.sin(state.time * 0.46) * 34;
+    const speed = rand(motionQuery.matches ? 420 : 540, motionQuery.matches ? 650 : 820);
+    const lifetime = rand(0.92, 1.34);
+    pushTrimmed(state.thunder.rainDrops, {
+      pos: pt(rand(-90, state.width + 90), rand(-100, -8)),
+      vel: pt(wind + rand(-24, 24), speed),
+      length: rand(motionQuery.matches ? 11 : 16, motionQuery.matches ? 18 : 28),
+      life: lifetime,
+      maxLife: lifetime,
+      alpha: rand(0.32, 0.68),
+    }, motionQuery.matches ? 110 : 190);
+  }
+
+  function updateWeatherRain(dt) {
+    const thunder = state.thunder;
+    if (thunder.active) {
+      thunder.rainSpawnRemainder += dt * (motionQuery.matches ? 78 : 150);
+      while (thunder.rainSpawnRemainder >= 1) {
+        spawnWeatherRainDrop();
+        thunder.rainSpawnRemainder -= 1;
+      }
+    } else {
+      thunder.rainSpawnRemainder = 0;
+    }
+
+    compactInPlace(thunder.rainDrops, (drop) => {
+      drop.life -= dt;
+      drop.pos = add(drop.pos, mul(drop.vel, dt));
+      return (
+        drop.life > 0
+        && drop.pos.y < state.height + 80
+        && drop.pos.x > -160
+        && drop.pos.x < state.width + 160
+      );
+    });
+  }
+
   function igniteCargoFromThunder(cargo, strikePoint, power = 1) {
     const center = pt(cargo.pos.x + cargo.width / 2, cargo.pos.y + cargo.height / 2);
     const direction = norm(sub(center, strikePoint));
@@ -143,6 +181,8 @@
   function updateThunder(dt) {
     state.thunder.pulse += dt * 6.4;
     state.thunder.cursorJitter += dt * 18;
+
+    updateWeatherRain(dt);
 
     state.thunder.flash *= Math.exp(-dt * 6.4);
     if (state.thunder.flash < 0.002) {

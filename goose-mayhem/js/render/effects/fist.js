@@ -25,18 +25,42 @@
     }
 
     const pulse = Math.sin(state.fist.pulse * 1.8) * 0.5 + 0.5;
+    const iconImage = state.fist.iconImage;
+    const punchT = state.fist.punchDuration > 0
+      ? clamp(state.fist.punchAge / state.fist.punchDuration, 0, 1)
+      : 1;
+    const punchPower = punchT < 1 ? Math.sin(punchT * Math.PI) : 0;
+    const punchSnap = punchT < 1 ? Math.sin(punchT * Math.PI * 2) : 0;
+    const punchDir = angleVec(state.fist.punchAngle);
+    const punchOffset = mul(punchDir, punchPower * 22);
 
     ctx.save();
-    ctx.translate(state.pointer.pos.x, state.pointer.pos.y);
+    ctx.translate(state.pointer.pos.x + punchOffset.x, state.pointer.pos.y + punchOffset.y);
+    ctx.scale(1 + punchPower * 0.18, 1 + punchPower * 0.18);
     ctx.globalCompositeOperation = "lighter";
-    ctx.fillStyle = `rgba(255, 228, 214, ${0.16 + pulse * 0.12})`;
+    ctx.fillStyle = `rgba(255, 245, 245, ${0.14 + pulse * 0.12})`;
     ctx.beginPath();
-    ctx.arc(0, 0, 28 + pulse * 6, 0, TAU);
+    ctx.arc(0, 0, 30 + pulse * 7, 0, TAU);
     ctx.fill();
     ctx.restore();
 
+    if (iconImage?.complete && iconImage.naturalWidth > 0) {
+      const size = 52 + pulse * 5 + punchPower * 9;
+      ctx.save();
+      ctx.translate(state.pointer.pos.x + punchOffset.x, state.pointer.pos.y + punchOffset.y);
+      ctx.rotate(Math.sin(state.fist.pulse * 0.9) * 0.05 + punchSnap * 0.16);
+      ctx.scale(1 + punchPower * 0.22, 1 - punchPower * 0.08);
+      ctx.shadowColor = "rgba(15, 15, 15, 0.34)";
+      ctx.shadowBlur = 10 + punchPower * 8;
+      ctx.drawImage(iconImage, -size * 0.5, -size * 0.5, size, size);
+      ctx.restore();
+      return;
+    }
+
     ctx.save();
-    ctx.translate(state.pointer.pos.x - 12, state.pointer.pos.y - 10);
+    ctx.translate(state.pointer.pos.x - 12 + punchOffset.x, state.pointer.pos.y - 10 + punchOffset.y);
+    ctx.rotate(punchSnap * 0.16);
+    ctx.scale(1 + punchPower * 0.18, 1 - punchPower * 0.08);
     ctx.fillStyle = COLORS.fistSkin;
     roundedRectPath(0, 16, 30, 22, 10);
     ctx.fill();
@@ -57,17 +81,25 @@
 
   function drawFistCracks() {
     const fist = state.fist;
-    if (!fist.cracks.length && fist.impactFlash <= 0) {
+    if (!fist.cracks.length) {
       return;
     }
 
-    if (fist.impactFlash > 0) {
-      const flashAlpha = clamp(Math.pow(fist.impactFlash, 0.6) * 0.22, 0, 0.22);
+    const glassImage = fist.glassImage;
+    if (glassImage?.complete && glassImage.naturalWidth > 0) {
       ctx.save();
-      ctx.setTransform(state.dpr, 0, 0, state.dpr, 0, 0);
-      ctx.fillStyle = `rgba(225, 241, 255, ${flashAlpha})`;
-      ctx.fillRect(0, 0, state.width, state.height);
+      for (const crack of fist.cracks) {
+        const removalFade = clamp((crack.duration - crack.age) / 0.55, 0, 1);
+        const size = 250 + crack.scale * 78;
+        ctx.save();
+        ctx.globalAlpha = removalFade;
+        ctx.translate(crack.point.x, crack.point.y);
+        ctx.rotate(crack.rotation || 0);
+        ctx.drawImage(glassImage, -size * 0.5, -size * 0.5, size, size);
+        ctx.restore();
+      }
       ctx.restore();
+      return;
     }
 
     ctx.save();

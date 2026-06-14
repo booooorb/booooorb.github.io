@@ -31,7 +31,7 @@
   }
 
   function antiMalwareLabel() {
-    return motionQuery.matches ? "anti-malware" : "anti-malware.app";
+    return "Malwarebytes";
   }
 
   function defaultAntiMalwareIconPos() {
@@ -58,7 +58,7 @@
   }
 
   function recycleBinLabel() {
-    return motionQuery.matches ? "trash-bin" : "trash-bin.app";
+    return "Trash Bin";
   }
 
   function defaultRecycleBinIconPos() {
@@ -93,7 +93,7 @@
   }
 
   function taskManagerLabel() {
-    return motionQuery.matches ? "task-mgr" : "task-manager.app";
+    return motionQuery.matches ? "Task Mgr" : "Task Manager";
   }
 
   function defaultTaskManagerIconPos() {
@@ -344,6 +344,7 @@
       thunder: state.thunder.active,
       gauntlet: state.gauntlet.snapping,
       bread: state.bread.active,
+      paint: state.paint.active,
       fist: state.fist.active,
     };
 

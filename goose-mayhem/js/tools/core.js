@@ -52,6 +52,7 @@
       || state.fist.active
       || state.thunder.active
       || state.bread.active
+      || state.paint.active
       || state.katana.active
       || state.flamethrower.active;
   }
@@ -88,6 +89,7 @@
     "nuke",
     "thunder",
     "bread",
+    "paint",
     "fist",
   ];
 
@@ -106,6 +108,12 @@
       if (typeof clearKatanaTrail === "function") {
         clearKatanaTrail();
       }
+      return;
+    }
+
+    if (toolId === "paint") {
+      state.paint.active = false;
+      state.paint.painting = false;
       return;
     }
 

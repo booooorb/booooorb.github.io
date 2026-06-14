@@ -244,6 +244,85 @@
     }
   }
 
+  class PaintCleanupGooseTask extends GooseTaskController {
+    constructor() {
+      super(TASKS.PAINT_CLEANUP);
+    }
+
+    enter(goose, cargo) {
+      if (goose.cargoId && goose.cargoId !== cargo.id) {
+        dropGooseCargo(goose);
+      }
+
+      goose.cargoId = cargo.id;
+      const alreadyHeld = cargo.ownerId === goose.id;
+      if (!alreadyHeld) {
+        releaseCargoOwner(cargo);
+      }
+      super.enter(goose, alreadyHeld
+        ? {
+          stage: "hauling",
+          screenDirection: setTargetOffscreen(goose, true),
+        }
+        : {
+          stage: "approaching",
+          screenDirection: null,
+        });
+      goose.sprinting = true;
+      cargo.visible = true;
+      cargo.grabbed = alreadyHeld;
+      cargo.ownerId = alreadyHeld ? goose.id : null;
+      goose.target = alreadyHeld
+        ? goose.target
+        : clampPoint(pt(cargo.pos.x + cargo.width / 2, cargo.pos.y + cargo.height / 2));
+      triggerHonk(goose, "HONK!");
+    }
+
+    reset(goose) {
+      goose.task = TASKS.WANDER;
+      goose.taskData = null;
+      goose.cargoId = null;
+      goose.sprinting = false;
+    }
+
+    update(goose) {
+      const data = goose.taskData;
+      const cargo = currentCargo(goose);
+      if (!data || !cargo) {
+        this.reset(goose);
+        return;
+      }
+
+      goose.sprinting = true;
+      cargo.visible = true;
+
+      if (data.stage === "approaching") {
+        goose.target = clampPoint(pt(cargo.pos.x + cargo.width / 2, cargo.pos.y + cargo.height / 2));
+        if (dist(goose.pos, goose.target) < 24) {
+          data.stage = "hauling";
+          data.screenDirection = setTargetOffscreen(goose, true);
+          cargo.grabbed = true;
+          cargo.ownerId = goose.id;
+        }
+        return;
+      }
+
+      cargo.grabbed = true;
+      cargo.ownerId = goose.id;
+
+      if (dist(goose.pos, goose.target) < 12) {
+        removeCargo(cargo.id);
+        goose.cargoId = null;
+        gooseTaskRegistry.enter(goose, TASKS.WANDER, {
+          pauseRange: [0.12, 0.34],
+          mayhemRange: [0.8, 2.4],
+          minDistance: 80,
+          roamScale: 0.8,
+        });
+      }
+    }
+  }
+
   class GooseTaskRegistry {
     constructor(tasks) {
       this.tasks = new Map(tasks.map((task) => [task.id, task]));
@@ -268,4 +347,5 @@
     new CursorChaseGooseTask(),
     new BreadChaseGooseTask(),
     new DragTabGooseTask(),
+    new PaintCleanupGooseTask(),
   ]);

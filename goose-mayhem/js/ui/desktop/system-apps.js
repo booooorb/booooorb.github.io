@@ -162,7 +162,7 @@
     anti.status = "connecting";
     anti.targetCargoId = cargo.id;
     anti.connectionStart = state.time;
-    anti.connectionDuration = rand(2, 3);
+    anti.connectionDuration = rand(0.4, 0.6);
     setAntiMalwareEvent(`Target locked: ${cargo.title}`, 1.7);
   }
 
@@ -306,27 +306,31 @@
     const mouth = recycleBinMouthPoint();
     const collected = [];
     for (const cargo of state.cargoes) {
-      if (!cargo.visible || cargo.grabbed || cargo.dusting) {
-        cargo.vacuumProgress = Math.max(0, (cargo.vacuumProgress || 0) - dt * 1.6);
+      if (!cargo.visible || cargo.dusting) {
+        cargo.vacuumProgress = Math.max(0, (cargo.vacuumProgress || 0) - dt * 2.2);
         continue;
       }
 
       const cargoCenter = pt(cargo.pos.x + cargo.width / 2, cargo.pos.y + cargo.height / 2);
       const distance = dist(mouth, cargoCenter);
       if (distance <= bin.suctionRadius) {
+        if (cargo.grabbed || cargo.ownerId) {
+          releaseCargoOwner(cargo);
+        }
         const closeness = 1 - distance / bin.suctionRadius;
+        const vacuumCharge = clamp(closeness * 0.78 + (cargo.vacuumProgress || 0) * 0.82, 0, 1);
         cargo.vacuumProgress = Math.min(
           1,
-          (cargo.vacuumProgress || 0) + dt / lerp(3.4, 0.68, closeness)
+          (cargo.vacuumProgress || 0) + dt / lerp(2.45, 0.42, vacuumCharge)
         );
         const direction = norm(sub(mouth, cargoCenter));
-        const pull = lerp(56, 314, Math.max(closeness * 0.6, cargo.vacuumProgress || 0));
+        const pull = lerp(84, 420, Math.max(Math.pow(closeness, 0.72), cargo.vacuumProgress || 0));
         cargo.pos = clampPoint(add(cargo.pos, mul(direction, pull * dt)));
         if (cargo.vacuumProgress >= 1) {
           collected.push(cargo);
         }
       } else {
-        cargo.vacuumProgress = Math.max(0, (cargo.vacuumProgress || 0) - dt * 0.95);
+        cargo.vacuumProgress = Math.max(0, (cargo.vacuumProgress || 0) - dt * 1.25);
       }
     }
 

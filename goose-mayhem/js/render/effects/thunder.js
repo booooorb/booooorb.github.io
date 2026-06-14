@@ -10,7 +10,47 @@
     }
   }
 
+  function drawWeatherRain() {
+    const thunder = state.thunder;
+    if (!thunder.rainDrops.length && !thunder.active) {
+      return;
+    }
+
+    if (thunder.active) {
+      ctx.save();
+      ctx.fillStyle = motionQuery.matches
+        ? "rgba(50, 86, 128, 0.045)"
+        : "rgba(38, 73, 116, 0.075)";
+      ctx.fillRect(0, 0, state.width, state.height);
+      ctx.restore();
+    }
+
+    if (!thunder.rainDrops.length) {
+      return;
+    }
+
+    ctx.save();
+    ctx.lineCap = "round";
+    ctx.globalCompositeOperation = "lighter";
+    ctx.lineWidth = motionQuery.matches ? 1.05 : 1.35;
+    for (const drop of thunder.rainDrops) {
+      const life = clamp(drop.life / drop.maxLife, 0, 1);
+      const fadeIn = clamp((drop.maxLife - drop.life) / 0.14, 0, 1);
+      const alpha = drop.alpha * Math.min(life * 1.7, fadeIn);
+      const direction = norm(drop.vel);
+      const tail = mul(direction, -drop.length);
+      ctx.strokeStyle = `rgba(188, 225, 255, ${alpha})`;
+      ctx.beginPath();
+      ctx.moveTo(drop.pos.x, drop.pos.y);
+      ctx.lineTo(drop.pos.x + tail.x, drop.pos.y + tail.y);
+      ctx.stroke();
+    }
+    ctx.restore();
+  }
+
   function drawThunderEffects() {
+    drawWeatherRain();
+
     const thunder = state.thunder;
     const active = thunder.strikes.length
       || thunder.scorches.length

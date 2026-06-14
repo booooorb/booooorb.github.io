@@ -11,8 +11,10 @@
     const crack = {
       point: pt(point.x, point.y),
       age: 0,
-      duration: motionQuery.matches ? 1.65 : 2.35,
+      duration: motionQuery.matches ? 8 : 12,
       scale,
+      rotation: rand(0, TAU),
+      seed: rand(0, TAU),
       spokes: Array.from({ length: 8 }, (_, index) => ({
         angle: (TAU / 8) * index + rand(-0.26, 0.26),
         length: rand(34, 88) * scale,
@@ -80,7 +82,9 @@
       clamp(point.x, 22, Math.max(22, state.width - 22)),
       clamp(point.y, 22, Math.max(22, state.height - 22))
     );
-    state.fist.impactFlash = 1;
+    state.fist.punchAge = 0;
+    state.fist.punchDuration = motionQuery.matches ? 0.18 : 0.26;
+    state.fist.punchAngle = Math.PI * 0.25 + rand(-0.38, 0.38);
     spawnFistCrack(impact, 1);
 
     const cargo = findTopCargoAtPoint(impact);
@@ -110,6 +114,7 @@
 
   function updateFist(dt) {
     state.fist.pulse += dt * (state.fist.active ? 6.8 : 3.6);
+    state.fist.punchAge = Math.min(state.fist.punchDuration, state.fist.punchAge + dt);
     state.fist.impactFlash *= Math.exp(-dt * 8.2);
     if (state.fist.impactFlash < 0.002) {
       state.fist.impactFlash = 0;

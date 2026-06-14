@@ -10,4 +10,5 @@
   toolManager.register(new NukeTool(toolManager.context));
   toolManager.register(new GauntletTool(toolManager.context));
   toolManager.register(new BreadTool(toolManager.context));
+  toolManager.register(new PaintTool(toolManager.context));
   toolManager.register(new FistTool(toolManager.context));
