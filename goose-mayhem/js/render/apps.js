@@ -350,6 +350,30 @@
         glow: "rgba(255, 92, 92, 0.24)",
       };
     }
+    if (appId === "spotify") {
+      return {
+        body: "rgba(225, 255, 232, 0.98)",
+        edge: "rgba(28, 126, 56, 0.38)",
+        text: "rgba(12, 78, 32, 0.9)",
+        glow: "rgba(30, 215, 96, 0.28)",
+      };
+    }
+    if (appId === "minesweeper") {
+      return {
+        body: "rgba(238, 240, 244, 0.98)",
+        edge: "rgba(92, 98, 110, 0.38)",
+        text: "rgba(38, 42, 52, 0.9)",
+        glow: "rgba(255, 56, 56, 0.24)",
+      };
+    }
+    if (appId === "internetExplorer") {
+      return {
+        body: "rgba(222, 244, 255, 0.98)",
+        edge: "rgba(52, 126, 184, 0.38)",
+        text: "rgba(16, 78, 132, 0.9)",
+        glow: "rgba(80, 174, 238, 0.28)",
+      };
+    }
     return {
       body: "rgba(255, 230, 220, 0.98)",
       edge: "rgba(146, 91, 68, 0.38)",
@@ -496,6 +520,58 @@
       return;
     }
 
+    if (appId === "spotify") {
+      ctx.fillStyle = "rgba(30, 215, 96, 0.98)";
+      ctx.beginPath();
+      ctx.arc(size * 0.5, size * 0.5, size * 0.3, 0, TAU);
+      ctx.fill();
+      ctx.strokeStyle = "rgba(8, 54, 24, 0.9)";
+      ctx.lineWidth = 3;
+      for (let i = 0; i < 3; i += 1) {
+        ctx.beginPath();
+        ctx.arc(size * 0.43, size * (0.45 + i * 0.08), size * (0.2 + i * 0.03), -0.6, 0.7);
+        ctx.stroke();
+      }
+      return;
+    }
+
+    if (appId === "minesweeper") {
+      ctx.fillStyle = "rgba(198, 198, 198, 0.98)";
+      ctx.fillRect(size * 0.18, size * 0.18, size * 0.64, size * 0.64);
+      ctx.strokeStyle = "rgba(72, 72, 72, 0.88)";
+      ctx.strokeRect(size * 0.18, size * 0.18, size * 0.64, size * 0.64);
+      ctx.fillStyle = "rgba(224, 18, 18, 0.98)";
+      ctx.beginPath();
+      ctx.moveTo(size * 0.42, size * 0.3);
+      ctx.lineTo(size * 0.68, size * 0.4);
+      ctx.lineTo(size * 0.42, size * 0.5);
+      ctx.closePath();
+      ctx.fill();
+      ctx.strokeStyle = "rgba(80, 42, 18, 0.9)";
+      ctx.beginPath();
+      ctx.moveTo(size * 0.4, size * 0.3);
+      ctx.lineTo(size * 0.4, size * 0.72);
+      ctx.stroke();
+      return;
+    }
+
+    if (appId === "internetExplorer") {
+      ctx.fillStyle = "rgba(38, 150, 220, 0.98)";
+      ctx.beginPath();
+      ctx.arc(size * 0.48, size * 0.52, size * 0.25, 0, TAU);
+      ctx.fill();
+      ctx.strokeStyle = "rgba(244, 198, 55, 0.98)";
+      ctx.lineWidth = 4;
+      ctx.save();
+      ctx.translate(size * 0.5, size * 0.5);
+      ctx.rotate(-0.58);
+      ctx.beginPath();
+      ctx.ellipse(0, 0, size * 0.38, size * 0.18, 0, 0, TAU);
+      ctx.stroke();
+      ctx.restore();
+      return;
+    }
+
     ctx.fillStyle = COLORS.fistSkin;
     roundedRectPath(size * 0.22, size * 0.34, size * 0.44, size * 0.28, 10);
     ctx.fill();
@@ -512,6 +588,9 @@
   function drawDesktopToolAppIcon(appId) {
     const app = state.desktopApps[appId];
     if (!app?.owned) {
+      return;
+    }
+    if (appId === "internetExplorer" && internetExplorerIconHidden()) {
       return;
     }
 
@@ -536,11 +615,17 @@
           ? state.bread.iconImage
         : appId === "paint"
           ? state.paint.iconImage
+        : appId === "spotify"
+          ? state.spotify.iconImage
+        : appId === "minesweeper"
+          ? state.minesweeper.iconImage
+        : appId === "internetExplorer"
+          ? state.internetExplorer.iconImage
         : appId === "fist"
           ? state.fist.iconImage
           : null;
     const hasLoadedIconImage = iconImage?.complete && iconImage.naturalWidth > 0;
-    const isBareImageIcon = appId === "flamethrower" || appId === "katana" || appId === "nuke" || appId === "thunder" || appId === "gauntlet" || appId === "bread" || appId === "paint" || appId === "fist";
+    const isBareImageIcon = appId === "flamethrower" || appId === "katana" || appId === "nuke" || appId === "thunder" || appId === "gauntlet" || appId === "bread" || appId === "paint" || appId === "spotify" || appId === "minesweeper" || appId === "internetExplorer" || appId === "fist";
     const drawIconBackground = !isBareImageIcon;
 
     ctx.save();

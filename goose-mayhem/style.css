@@ -43,6 +43,19 @@ body {
   background: #2d75df url("assets/backgrounds/windows%20background.jpg") center / 100% 100% no-repeat;
 }
 
+.stage--black-hole {
+  background: #000;
+}
+
+.stage--black-hole .xp-desktop,
+.stage--black-hole .back-link,
+.stage--black-hole .title-chip,
+.stage--black-hole .credits-button,
+.stage--black-hole .store-hud {
+  opacity: 0;
+  pointer-events: none;
+}
+
 .stage::before,
 .stage::after {
   content: "";
@@ -68,6 +81,24 @@ body {
   display: block;
   z-index: 1;
   pointer-events: auto;
+}
+
+.black-hole-effect {
+  position: absolute;
+  left: 0;
+  top: 0;
+  z-index: 0;
+  width: 560px;
+  height: auto;
+  display: block;
+  pointer-events: none;
+  transform: translate(-50%, -50%);
+  transform-origin: center;
+  background: #000;
+}
+
+.black-hole-effect[hidden] {
+  display: none;
 }
 
 .xp-desktop {
@@ -610,13 +641,18 @@ body {
 }
 
 .store-card__icon--recycleBin {
-  background: linear-gradient(180deg, #79c6ff, #4b8fd7);
+  border-color: transparent;
+  background: url("assets/icons/trash-bin.png") center / var(--store-icon-image-size) var(--store-icon-image-size) no-repeat;
+  box-shadow: none;
+  text-shadow: none;
 }
 
 .store-card__icon--taskManager {
+  border-color: transparent;
   background:
-    url("assets/icons/task-manager.png") center / var(--store-icon-image-size) var(--store-icon-image-size) no-repeat,
-    linear-gradient(180deg, #eff5ff, #dbe7ff);
+    url("assets/icons/task-manager.png") center / var(--store-icon-image-size) var(--store-icon-image-size) no-repeat;
+  box-shadow: none;
+  text-shadow: none;
 }
 
 .store-card__icon--flamethrower {
@@ -648,11 +684,45 @@ body {
 }
 
 .store-card__icon--gauntlet {
-  background: linear-gradient(180deg, #d8a06d, #99612a);
+  border-color: transparent;
+  background: url("assets/icons/infinity_gauntlet.png") center / var(--store-icon-image-size) var(--store-icon-image-size) no-repeat;
+  box-shadow: none;
+  text-shadow: none;
 }
 
 .store-card__icon--bread {
-  background: linear-gradient(180deg, #f3c77f, #b6722b);
+  border-color: transparent;
+  background: url("assets/icons/bread.png") center / var(--store-icon-image-size) var(--store-icon-image-size) no-repeat;
+  box-shadow: none;
+  text-shadow: none;
+}
+
+.store-card__icon--paint {
+  border-color: transparent;
+  background: url("assets/icons/MSPaint.png") center / var(--store-icon-image-size) var(--store-icon-image-size) no-repeat;
+  box-shadow: none;
+  text-shadow: none;
+}
+
+.store-card__icon--spotify {
+  border-color: transparent;
+  background: url("assets/icons/spotify.png") center / var(--store-icon-image-size) var(--store-icon-image-size) no-repeat;
+  box-shadow: none;
+  text-shadow: none;
+}
+
+.store-card__icon--minesweeper {
+  border-color: transparent;
+  background: url("assets/icons/minesweeper.png") center / var(--store-icon-image-size) var(--store-icon-image-size) no-repeat;
+  box-shadow: none;
+  text-shadow: none;
+}
+
+.store-card__icon--internetExplorer {
+  border-color: transparent;
+  background: url("assets/icons/internet-explorer.png") center / var(--store-icon-image-size) var(--store-icon-image-size) no-repeat;
+  box-shadow: none;
+  text-shadow: none;
 }
 
 .store-card__icon--fist {

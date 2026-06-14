@@ -118,7 +118,7 @@
     }, 420);
     markCargoPaintCoverage(cargo, localPoint, radius);
 
-    if (cargo.paintCoverage > 0.05) {
+    if (cargo.paintCoverage > 0.4) {
       sendPaintedCargoAway(cargo);
     }
     return true;

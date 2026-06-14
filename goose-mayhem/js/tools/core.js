@@ -53,6 +53,7 @@
       || state.thunder.active
       || state.bread.active
       || state.paint.active
+      || state.minesweeper.active
       || state.katana.active
       || state.flamethrower.active;
   }
@@ -90,6 +91,7 @@
     "thunder",
     "bread",
     "paint",
+    "minesweeper",
     "fist",
   ];
 
@@ -114,6 +116,17 @@
     if (toolId === "paint") {
       state.paint.active = false;
       state.paint.painting = false;
+      return;
+    }
+
+    if (toolId === "internetExplorer") {
+      state.internetExplorer.active = false;
+      state.internetExplorer.orbitItems.clear();
+      for (const cargo of state.cargoes) {
+        if (typeof releaseInternetExplorerCargo === "function") {
+          releaseInternetExplorerCargo(cargo);
+        }
+      }
       return;
     }
 

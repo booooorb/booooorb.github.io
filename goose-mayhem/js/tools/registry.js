@@ -11,4 +11,7 @@
   toolManager.register(new GauntletTool(toolManager.context));
   toolManager.register(new BreadTool(toolManager.context));
   toolManager.register(new PaintTool(toolManager.context));
+  toolManager.register(new SpotifyTool(toolManager.context));
+  toolManager.register(new MinesweeperTool(toolManager.context));
+  toolManager.register(new InternetExplorerTool(toolManager.context));
   toolManager.register(new FistTool(toolManager.context));

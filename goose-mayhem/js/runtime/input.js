@@ -57,7 +57,7 @@
       return true;
     }
 
-    if (state.nuke.active || state.fist.active || state.thunder.active || state.bread.active) {
+    if (state.nuke.active || state.fist.active || state.thunder.active || state.bread.active || state.minesweeper.active) {
       if (uiTarget) {
         setPointerHover(uiTarget);
       } else {
@@ -149,7 +149,7 @@
   }
 
   function hoveredUiTargetAfterPointerUp() {
-    if (!state.pointer.inside || state.katana.active || state.thunder.active || state.bread.active || state.paint.active || state.fist.active) {
+    if (!state.pointer.inside || state.katana.active || state.thunder.active || state.bread.active || state.paint.active || state.minesweeper.active || state.fist.active) {
       return null;
     }
     return antiMalwareHitTarget(state.pointer.pos);
@@ -274,6 +274,12 @@
 
     if (state.nuke.active) {
       toolManager.get("nuke").drop(point);
+      render();
+      return true;
+    }
+
+    if (state.minesweeper.active) {
+      toolManager.get("minesweeper").place(point);
       render();
       return true;
     }

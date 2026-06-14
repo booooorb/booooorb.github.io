@@ -346,6 +346,10 @@
   }
 
   function antiMalwareHitTarget(point) {
+    if (internetExplorerBlackoutActive()) {
+      return null;
+    }
+
     if (state.antiMalware.windowOpen && pointInRect(point, antiMalwareCloseRect())) {
       return "anti-close";
     }

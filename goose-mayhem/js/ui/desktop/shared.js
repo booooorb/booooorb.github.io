@@ -345,6 +345,7 @@
       gauntlet: state.gauntlet.snapping,
       bread: state.bread.active,
       paint: state.paint.active,
+      minesweeper: state.minesweeper.active,
       fist: state.fist.active,
     };
 
@@ -431,9 +432,15 @@
   }
 
   function desktopToolAppHitTarget(point) {
+    if (internetExplorerBlackoutActive()) {
+      return null;
+    }
     for (let i = DESKTOP_TOOL_APPS.length - 1; i >= 0; i -= 1) {
       const appId = DESKTOP_TOOL_APPS[i].id;
       if (!state.desktopApps[appId].owned) {
+        continue;
+      }
+      if (appId === "internetExplorer" && internetExplorerIconHidden()) {
         continue;
       }
       if (pointInRect(point, desktopToolIconRect(appId))) {

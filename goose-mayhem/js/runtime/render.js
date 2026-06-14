@@ -1,15 +1,24 @@
   function renderDesktopLayer(katana, fist) {
-    drawAntiMalwareIcon();
-    drawRecycleBinIcon();
-    drawTaskManagerIcon();
-    drawDesktopToolApps();
+    const blackout = internetExplorerBlackoutActive();
+    if (blackout) {
+      ctx.clearRect(0, 0, state.width, state.height);
+    } else {
+      drawAntiMalwareIcon();
+      drawRecycleBinIcon();
+      drawTaskManagerIcon();
+      drawDesktopToolApps();
+    }
 
     for (const cargo of state.cargoes) {
       drawCargo(cargo);
     }
 
-    katana.animation.drawSplitPieces();
-    fist.animation.drawShards();
+    if (!blackout) {
+      drawInternetExplorerHalo();
+      drawMinesweeperMines();
+      katana.animation.drawSplitPieces();
+      fist.animation.drawShards();
+    }
   }
 
   function syncRenderGeese() {
@@ -42,7 +51,11 @@
     }
   }
 
-  function renderEffectLayer(flamethrower, katana, thunder, nuke, gauntlet, bread, paint, fist) {
+  function renderEffectLayer(flamethrower, katana, thunder, nuke, gauntlet, bread, paint, spotify, minesweeper, fist) {
+    if (internetExplorerBlackoutActive()) {
+      return;
+    }
+
     gauntlet.animation.drawDust();
     drawRecycleBinEffect();
     drawAntiMalwareConnection();
@@ -60,10 +73,13 @@
     thunder.animation.drawCursor();
     bread.animation.drawCursor();
     paint.animation.drawCursor();
+    minesweeper.animation.drawCursor();
     fist.animation.drawCursor();
     flamethrower.animation.drawReticle();
     nuke.animation.drawEffects();
     thunder.animation.drawEffects();
+    drawSpotifyWaves();
+    drawMinesweeperExplosions();
     toolManager.drawCurrencyBursts();
     fist.animation.drawCracks();
   }
@@ -76,6 +92,8 @@
     const gauntlet = toolManager.get("gauntlet");
     const bread = toolManager.get("bread");
     const paint = toolManager.get("paint");
+    const spotify = toolManager.get("spotify");
+    const minesweeper = toolManager.get("minesweeper");
     const fist = toolManager.get("fist");
 
     ctx.setTransform(1, 0, 0, 1, 0, 0);
@@ -84,5 +102,7 @@
 
     renderDesktopLayer(katana, fist);
     renderGeeseLayer();
-    renderEffectLayer(flamethrower, katana, thunder, nuke, gauntlet, bread, paint, fist);
+    renderEffectLayer(flamethrower, katana, thunder, nuke, gauntlet, bread, paint, spotify, minesweeper, fist);
+    drawInternetExplorerBlackoutFlash();
+    drawInternetExplorerReturnTransition();
   }

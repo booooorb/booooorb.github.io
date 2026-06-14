@@ -9,6 +9,7 @@
   const attributionModal = document.getElementById("attributionModal");
   const attributionClose = document.getElementById("attributionClose");
   const attributionOpen = document.getElementById("attributionOpen");
+  const blackHoleEffect = document.getElementById("blackHoleEffect");
 
   const ctx = canvas ? canvas.getContext("2d") : null;
   const GOOSE_MAYHEM_ACTIVE = !!stage && !!canvas && !!ctx;
@@ -273,9 +274,14 @@
   const PAINT_ICON_PATH = "assets/icons/MSPaint.png";
   const GAUNTLET_ICON_PATH = "assets/icons/infinity_gauntlet.png";
   const BREAD_ICON_PATH = "assets/icons/bread.png";
+  const SPOTIFY_ICON_PATH = "assets/icons/spotify.png";
+  const MINESWEEPER_ICON_PATH = "assets/icons/minesweeper.png";
+  const INTERNET_EXPLORER_ICON_PATH = "assets/icons/internet-explorer.png";
+  const MINESWEEPER_FLAG_EFFECT_PATH = "assets/effects/minesweeper_flag_waving_ultralight_48.webp";
   const FIREFOX_FIRE_EFFECT_PATH = "assets/effects/firefox-fire.png";
   const BROKEN_GLASS_EFFECT_PATH = "assets/effects/broken_glass_PNG38.png";
   const SNIPPING_TOOL_SNIPPER_EFFECT_PATH = "assets/effects/snipping-tool-snipper.png";
+  const BLACK_HOLE_EFFECT_PATH = "assets/effects/black_hole.gif";
 
   const HONK_TEXTS = [
     "HONK!",
@@ -344,6 +350,27 @@
       desktopLabel: "Paint",
       shortLabel: "Paint",
       hotkey: "P",
+    },
+    {
+      id: "spotify",
+      name: "Spotify",
+      desktopLabel: "Spotify",
+      shortLabel: "Spotify",
+      hotkey: "S",
+    },
+    {
+      id: "minesweeper",
+      name: "Minesweeper",
+      desktopLabel: "Minesweeper",
+      shortLabel: "Mines",
+      hotkey: "M",
+    },
+    {
+      id: "internetExplorer",
+      name: "Internet Explorer",
+      desktopLabel: "Internet Explorer",
+      shortLabel: "IE",
+      hotkey: "I",
     },
     {
       id: "fist",
@@ -591,6 +618,35 @@
       brushRadius: 11,
       paintCellSize: 9,
     },
+    spotify: {
+      active: false,
+      iconImage: null,
+      pulse: 0,
+      waves: [],
+      avoidZones: [],
+    },
+    minesweeper: {
+      active: false,
+      iconImage: null,
+      flagImage: null,
+      pulse: 0,
+      mines: [],
+      explosions: [],
+    },
+    internetExplorer: {
+      active: false,
+      iconImage: null,
+      blackHoleImage: null,
+      pulse: 0,
+      haloAngle: -0.58,
+      orbitSpin: 0,
+      orbitSpinMilestone: 0,
+      orbitCount: 0,
+      orbitItems: new Map(),
+      specks: [],
+      singularity: null,
+      returnTransition: null,
+    },
     fist: {
       active: false,
       iconImage: null,
@@ -661,6 +717,26 @@
     state.paint.iconImage = new Image();
     state.paint.iconImage.decoding = "async";
     state.paint.iconImage.src = PAINT_ICON_PATH;
+
+    state.spotify.iconImage = new Image();
+    state.spotify.iconImage.decoding = "async";
+    state.spotify.iconImage.src = SPOTIFY_ICON_PATH;
+
+    state.minesweeper.iconImage = new Image();
+    state.minesweeper.iconImage.decoding = "async";
+    state.minesweeper.iconImage.src = MINESWEEPER_ICON_PATH;
+
+    state.minesweeper.flagImage = new Image();
+    state.minesweeper.flagImage.decoding = "async";
+    state.minesweeper.flagImage.src = MINESWEEPER_FLAG_EFFECT_PATH;
+
+    state.internetExplorer.iconImage = new Image();
+    state.internetExplorer.iconImage.decoding = "async";
+    state.internetExplorer.iconImage.src = INTERNET_EXPLORER_ICON_PATH;
+
+    state.internetExplorer.blackHoleImage = new Image();
+    state.internetExplorer.blackHoleImage.decoding = "async";
+    state.internetExplorer.blackHoleImage.src = BLACK_HOLE_EFFECT_PATH;
 
     state.memeImages = MEME_PATHS.map((src) => {
       const image = new Image();

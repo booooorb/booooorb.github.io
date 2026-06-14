@@ -206,6 +206,7 @@
     const burning = cargo.fireLevel > 0.05 || damage > 0.03;
     const dustProgress = cargoDustProgress(cargo);
     const vacuumProgress = cargo.vacuumProgress || 0;
+    const blackHoleProgress = cargo.blackHoleProgress || 0;
     const malwareProgress = antiMalwareConnectionProgress(cargo.id);
     const malwareGlow = malwareProgress > 0
       ? clamp(0.12 + Math.pow(malwareProgress, 1.35) * 0.88, 0, 1)
@@ -221,6 +222,53 @@
       cargo.pos.x + shakeX + dustProgress * 14 + vacuumProgress * 10,
       cargo.pos.y + shakeY - dustProgress * 5 - vacuumProgress * 4
     );
+    if (cargo.internetExplorerOrbit && (cargo.internetExplorerScale || 1) < 0.98) {
+      const scale = cargo.internetExplorerScale || 1;
+      const speckStartScale = 0.075;
+      const speckOnlyScale = 0.04;
+      const speckProgress = cubicEaseInOut(clamp(
+        (speckStartScale - scale) / (speckStartScale - speckOnlyScale),
+        0,
+        1
+      ));
+      if (speckProgress > 0) {
+        const twinkle = Math.sin(state.time * 10 + cargo.id) * 0.5 + 0.5;
+        ctx.save();
+        ctx.globalAlpha *= speckProgress;
+        ctx.shadowColor = "rgba(255, 255, 255, 0.68)";
+        ctx.shadowBlur = 2 + speckProgress * 3 + twinkle * 1.6;
+        ctx.fillStyle = "rgba(255, 255, 255, 0.94)";
+        ctx.beginPath();
+        ctx.arc(
+          cargo.width * 0.5,
+          cargo.height * 0.5,
+          lerp(0.9, 1.55, speckProgress) + twinkle * 0.25,
+          0,
+          TAU
+        );
+        ctx.fill();
+        ctx.restore();
+      }
+      if (scale <= speckOnlyScale) {
+        ctx.restore();
+        return;
+      }
+      if (speckProgress > 0) {
+        ctx.globalAlpha *= 1 - speckProgress * 0.72;
+      }
+      ctx.translate(cargo.width * 0.5, cargo.height * 0.5);
+      ctx.scale(scale, scale);
+      ctx.translate(-cargo.width * 0.5, -cargo.height * 0.5);
+    }
+    if (blackHoleProgress > 0) {
+      const pullT = cubicEaseInOut(clamp(blackHoleProgress, 0, 1));
+      ctx.globalAlpha *= Math.max(0.12, 1 - pullT * 0.82);
+      ctx.translate(cargo.width * 0.5, cargo.height * 0.5);
+      ctx.rotate((cargo.blackHoleSpin || 0) * pullT);
+      const scale = Math.max(0.035, 1 - pullT * 0.965);
+      ctx.scale(scale, scale);
+      ctx.translate(-cargo.width * 0.5, -cargo.height * 0.5);
+    }
     if (dustProgress > 0) {
       ctx.globalAlpha *= Math.max(0.04, 1 - Math.pow(dustProgress, 0.82) * 0.96);
     }

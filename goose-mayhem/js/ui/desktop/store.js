@@ -3,17 +3,7 @@
   }
 
   function storeAppBadge(appId) {
-    if (appId === "antiMalware") return "";
-    if (appId === "recycleBin") return "RB";
-    if (appId === "taskManager") return "TM";
-    if (appId === "flamethrower") return "";
-    if (appId === "katana") return "";
-    if (appId === "nuke") return "NK";
-    if (appId === "thunder") return "";
-    if (appId === "gauntlet") return "IG";
-    if (appId === "bread") return "BR";
-    if (appId === "fist") return "";
-    return appId.slice(0, 2).toUpperCase();
+    return "";
   }
 
   function syncShopUi() {
@@ -110,6 +100,9 @@
     desktopApp.owned = true;
     desktopApp.selected = false;
     desktopApp.iconPos = findDesktopIconSpot(appId);
+    if (appId === "internetExplorer") {
+      state.internetExplorer.active = true;
+    }
   }
 
   function purchaseDesktopApp(appId) {
