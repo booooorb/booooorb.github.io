@@ -14,4 +14,6 @@
   toolManager.register(new SpotifyTool(toolManager.context));
   toolManager.register(new MinesweeperTool(toolManager.context));
   toolManager.register(new InternetExplorerTool(toolManager.context));
+  toolManager.register(new ChromeTool(toolManager.context));
+  toolManager.register(new SkypeTool(toolManager.context));
   toolManager.register(new FistTool(toolManager.context));

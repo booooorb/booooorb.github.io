@@ -30,6 +30,41 @@
     return motionQuery.matches ? 54 : 62;
   }
 
+  function myComputerIconSize() {
+    return motionQuery.matches ? 56 : 64;
+  }
+
+  function myComputerLabel() {
+    return "My Computer";
+  }
+
+  function defaultMyComputerIconPos() {
+    const size = myComputerIconSize();
+    return clampRectPosition(
+      pt(state.width / 2 - size / 2, state.height / 2 - (size + 26) / 2),
+      size,
+      size + 26,
+      18
+    );
+  }
+
+  function myComputerIconRect() {
+    return desktopIconRect(state.myComputer.iconPos, myComputerIconSize());
+  }
+
+  function myComputerSelectionRect() {
+    return desktopLabelSelectionRect(myComputerIconRect(), myComputerLabel());
+  }
+
+  function layoutMyComputer() {
+    const computer = state.myComputer;
+    const iconSize = myComputerIconSize();
+    if (isUnplacedDesktopPoint(computer.iconPos)) {
+      computer.iconPos = defaultMyComputerIconPos();
+    }
+    computer.iconPos = clampRectPosition(computer.iconPos, iconSize, iconSize + 26, 18);
+  }
+
   function antiMalwareLabel() {
     return "Malwarebytes";
   }
@@ -54,7 +89,7 @@
   }
 
   function recycleBinIconSize() {
-    return motionQuery.matches ? 66 : 78;
+    return motionQuery.matches ? 54 : 62;
   }
 
   function recycleBinLabel() {
@@ -128,10 +163,10 @@
   function taskManagerCloseRect() {
     const rect = taskManagerWindowRect();
     return {
-      x: rect.x + 12,
-      y: rect.y + 9,
-      width: 16,
-      height: 16,
+      x: rect.x + rect.width - 25,
+      y: rect.y + 6,
+      width: 18,
+      height: 18,
     };
   }
 
@@ -141,7 +176,7 @@
       x: rect.x,
       y: rect.y,
       width: rect.width,
-      height: 32,
+      height: 30,
     };
   }
 
@@ -149,20 +184,20 @@
     const rect = taskManagerWindowRect();
     const cargoes = latestVisibleCargoes(6);
     return cargoes.map((cargo, index) => {
-      const y = rect.y + 54 + index * 29;
+      const y = rect.y + 93 + index * 25;
       return {
         cargo,
         rect: {
-          x: rect.x + 14,
+          x: rect.x + 10,
           y,
-          width: rect.width - 28,
+          width: rect.width - 20,
           height: 24,
         },
         endRect: {
-          x: rect.x + rect.width - 82,
-          y: y + 3,
-          width: 58,
-          height: 18,
+          x: rect.x + rect.width - 86,
+          y: rect.y + rect.height - 34,
+          width: 76,
+          height: 24,
         },
       };
     });
@@ -182,6 +217,7 @@
   }
 
   function clearDesktopSelections() {
+    state.myComputer.selected = false;
     state.antiMalware.selected = false;
     state.recycleBin.selected = false;
     state.taskManager.selected = false;
@@ -274,6 +310,9 @@
   }
 
   function desktopIconRectForApp(appId) {
+    if (appId === "myComputer") {
+      return myComputerIconRect();
+    }
     if (appId === "antiMalware") {
       return antiMalwareIconRect();
     }
@@ -290,6 +329,10 @@
   }
 
   function setDesktopAppSelected(appId, selected) {
+    if (appId === "myComputer") {
+      state.myComputer.selected = selected;
+      return;
+    }
     if (appId === "antiMalware") {
       state.antiMalware.selected = selected;
       return;
@@ -308,6 +351,9 @@
   }
 
   function iconTargetForApp(appId) {
+    if (appId === "myComputer") {
+      return "my-computer-icon";
+    }
     if (appId === "antiMalware") {
       return "anti-icon";
     }
@@ -321,6 +367,9 @@
   }
 
   function targetAppId(target) {
+    if (target === "my-computer-icon") {
+      return "myComputer";
+    }
     if (target === "anti-icon") {
       return "antiMalware";
     }
@@ -346,6 +395,7 @@
       bread: state.bread.active,
       paint: state.paint.active,
       minesweeper: state.minesweeper.active,
+      chrome: state.chrome.active,
       fist: state.fist.active,
     };
 

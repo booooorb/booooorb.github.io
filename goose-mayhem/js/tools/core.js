@@ -39,7 +39,8 @@
   }
 
   function isGrabCursorTarget(target = state.hoveredUiTarget) {
-    return target === "anti-icon"
+    return target === "my-computer-icon"
+      || target === "anti-icon"
       || target === "anti-window"
       || target === "recycle-icon"
       || target === "task-icon"

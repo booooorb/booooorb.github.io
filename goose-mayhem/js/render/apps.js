@@ -18,6 +18,88 @@
     ctx.restore();
   }
 
+  const iconImageBoundsCache = new WeakMap();
+
+  function visibleImageBounds(image) {
+    const cached = iconImageBoundsCache.get(image);
+    if (cached) {
+      return cached;
+    }
+
+    const fallback = {
+      x: 0,
+      y: 0,
+      width: image.naturalWidth,
+      height: image.naturalHeight,
+    };
+
+    try {
+      const sampleMax = 192;
+      const scale = Math.min(1, sampleMax / Math.max(image.naturalWidth, image.naturalHeight));
+      const sampleWidth = Math.max(1, Math.round(image.naturalWidth * scale));
+      const sampleHeight = Math.max(1, Math.round(image.naturalHeight * scale));
+      const sampleCanvas = document.createElement("canvas");
+      sampleCanvas.width = sampleWidth;
+      sampleCanvas.height = sampleHeight;
+      const sampleCtx = sampleCanvas.getContext("2d", { willReadFrequently: true });
+      sampleCtx.drawImage(image, 0, 0, sampleWidth, sampleHeight);
+      const pixels = sampleCtx.getImageData(0, 0, sampleWidth, sampleHeight).data;
+      let minX = sampleWidth;
+      let minY = sampleHeight;
+      let maxX = -1;
+      let maxY = -1;
+
+      for (let y = 0; y < sampleHeight; y += 1) {
+        for (let x = 0; x < sampleWidth; x += 1) {
+          if (pixels[(y * sampleWidth + x) * 4 + 3] <= 12) {
+            continue;
+          }
+          minX = Math.min(minX, x);
+          minY = Math.min(minY, y);
+          maxX = Math.max(maxX, x);
+          maxY = Math.max(maxY, y);
+        }
+      }
+
+      if (maxX < minX || maxY < minY) {
+        iconImageBoundsCache.set(image, fallback);
+        return fallback;
+      }
+
+      const padding = 1 / scale;
+      const bounds = {
+        x: Math.max(0, minX / scale - padding),
+        y: Math.max(0, minY / scale - padding),
+        width: Math.min(image.naturalWidth, (maxX - minX + 1) / scale + padding * 2),
+        height: Math.min(image.naturalHeight, (maxY - minY + 1) / scale + padding * 2),
+      };
+      iconImageBoundsCache.set(image, bounds);
+      return bounds;
+    } catch (error) {
+      void error;
+      iconImageBoundsCache.set(image, fallback);
+      return fallback;
+    }
+  }
+
+  function drawNormalizedIconImage(image, centerX, centerY, boxWidth, boxHeight) {
+    const bounds = visibleImageBounds(image);
+    const scale = Math.min(boxWidth / bounds.width, boxHeight / bounds.height);
+    const drawWidth = bounds.width * scale;
+    const drawHeight = bounds.height * scale;
+    ctx.drawImage(
+      image,
+      bounds.x,
+      bounds.y,
+      bounds.width,
+      bounds.height,
+      centerX - drawWidth / 2,
+      centerY - drawHeight / 2,
+      drawWidth,
+      drawHeight
+    );
+  }
+
   function drawRecycleBinIcon() {
     if (!state.recycleBin.deployed) {
       return;
@@ -45,7 +127,7 @@
       ctx.save();
       ctx.shadowColor = COLORS.recycleBinGlow;
       ctx.shadowBlur = hovered ? 24 : 14;
-      ctx.drawImage(iconImage, size * 0.12, size * 0.12, size * 0.76, size * 0.82);
+      drawNormalizedIconImage(iconImage, size * 0.5, size * 0.48, size * 0.76, size * 0.76);
       ctx.restore();
       drawDesktopLabel(recycleBinLabel(), size * 0.5, size + 20);
       ctx.restore();
@@ -177,7 +259,7 @@
       ctx.save();
       ctx.shadowColor = COLORS.taskManagerShadow;
       ctx.shadowBlur = hovered ? 16 : 8;
-      ctx.drawImage(iconImage, size * 0.08, size * 0.08, size * 0.84, size * 0.84);
+      drawNormalizedIconImage(iconImage, size * 0.5, size * 0.5, size * 0.78, size * 0.78);
       ctx.restore();
       drawDesktopLabel(taskManagerLabel(), size * 0.5, size + 20);
       ctx.restore();
@@ -209,6 +291,41 @@
     ctx.restore();
   }
 
+  function drawMyComputerIcon() {
+    if (!state.myComputer.deployed) {
+      return;
+    }
+
+    const rect = myComputerIconRect();
+    const selectionRect = myComputerSelectionRect();
+    const size = myComputerIconSize();
+    const hovered = state.hoveredUiTarget === "my-computer-icon" || state.antiMalware.drag.target === "my-computer-icon";
+    const selected = state.myComputer.selected || state.antiMalware.drag.target === "my-computer-icon";
+    const iconImage = state.myComputer.iconImage;
+
+    ctx.save();
+    if (selected) {
+      drawDesktopSelection(selectionRect);
+    }
+    ctx.translate(rect.x, rect.y);
+
+    ctx.fillStyle = "rgba(12, 28, 48, 0.22)";
+    ctx.beginPath();
+    ctx.ellipse(size * 0.5, size + 12, size * 0.42, 9, 0, 0, TAU);
+    ctx.fill();
+
+    if (iconImage?.complete && iconImage.naturalWidth > 0) {
+      ctx.save();
+      ctx.shadowColor = hovered ? "rgba(136, 202, 255, 0.42)" : "rgba(90, 146, 220, 0.28)";
+      ctx.shadowBlur = hovered ? 18 : 9;
+      drawNormalizedIconImage(iconImage, size * 0.5, size * 0.5, size * 0.78, size * 0.78);
+      ctx.restore();
+    }
+
+    drawDesktopLabel(myComputerLabel(), size * 0.5, size + 20);
+    ctx.restore();
+  }
+
   function drawTaskManagerWindow() {
     if (!state.taskManager.deployed || !state.taskManager.windowOpen) {
       return;
@@ -220,75 +337,158 @@
     const hoveredBar = state.hoveredUiTarget === "task-window" || state.antiMalware.drag.target === "task-window";
     const hoveredClose = state.hoveredUiTarget === "task-close";
     const rows = taskManagerRows();
+    const selectedRow = rows[0];
 
     ctx.save();
-    ctx.shadowColor = COLORS.taskManagerShadow;
-    ctx.shadowBlur = 28;
-    ctx.shadowOffsetY = 12;
-    roundedRectPath(rect.x, rect.y, rect.width, rect.height, 18);
-    ctx.fillStyle = COLORS.taskManagerPanel;
-    ctx.fill();
+    ctx.shadowColor = "rgba(0, 0, 0, 0.38)";
+    ctx.shadowBlur = 14;
+    ctx.shadowOffsetY = 6;
+    ctx.fillStyle = "#ece9d8";
+    ctx.fillRect(rect.x, rect.y, rect.width, rect.height);
     ctx.restore();
 
     ctx.save();
-    roundedRectPath(rect.x, rect.y, rect.width, rect.height, 18);
-    ctx.strokeStyle = COLORS.taskManagerPanelEdge;
-    ctx.lineWidth = 1.2;
-    ctx.stroke();
-
-    roundedRectPath(rect.x + 10, rect.y + 40, rect.width - 20, rect.height - 52, 12);
-    ctx.fillStyle = COLORS.taskManagerScreen;
-    ctx.fill();
-
-    ctx.fillStyle = hoveredBar ? "rgba(132, 156, 232, 0.99)" : COLORS.taskManagerBar;
-    roundedRectPath(rect.x + 1, rect.y + 1, rect.width - 2, 30, 17);
-    ctx.fill();
-
-    ctx.fillStyle = hoveredClose ? "rgba(255, 236, 234, 0.98)" : "rgba(255, 214, 208, 0.94)";
-    ctx.fillRect(closeRect.x, closeRect.y, closeRect.width, closeRect.height);
-    ctx.strokeStyle = COLORS.taskManagerKillEdge;
+    ctx.strokeStyle = "#003c74";
     ctx.lineWidth = 1;
-    ctx.strokeRect(closeRect.x, closeRect.y, closeRect.width, closeRect.height);
+    ctx.strokeRect(rect.x + 0.5, rect.y + 0.5, rect.width - 1, rect.height - 1);
+    ctx.strokeStyle = "rgba(255, 255, 255, 0.7)";
+    ctx.strokeRect(rect.x + 2.5, rect.y + 31.5, rect.width - 5, rect.height - 34);
+
+    const titleGradient = ctx.createLinearGradient(rect.x, rect.y, rect.x + rect.width, rect.y);
+    titleGradient.addColorStop(0, hoveredBar ? "#1d6fd6" : "#0a3ea8");
+    titleGradient.addColorStop(0.52, hoveredBar ? "#2f8afa" : "#1668d2");
+    titleGradient.addColorStop(1, hoveredBar ? "#0d55c4" : "#08449d");
+    ctx.fillStyle = titleGradient;
+    ctx.fillRect(rect.x + 3, rect.y + 3, rect.width - 6, 25);
+
+    ctx.fillStyle = "#ffffff";
+    ctx.font = `700 12px ${DESKTOP_FONT}`;
+    ctx.textBaseline = "middle";
+    ctx.fillText("Windows Task Manager", rect.x + 28, rect.y + 16);
+
+    ctx.fillStyle = "#2f72d6";
+    ctx.fillRect(rect.x + 10, rect.y + 9, 12, 11);
+    ctx.fillStyle = "#d7e8ff";
+    ctx.fillRect(rect.x + 12, rect.y + 11, 8, 2);
+    ctx.fillRect(rect.x + 12, rect.y + 15, 8, 2);
+
+    const closeGradient = ctx.createLinearGradient(closeRect.x, closeRect.y, closeRect.x, closeRect.y + closeRect.height);
+    closeGradient.addColorStop(0, hoveredClose ? "#ffb6a6" : "#f49a86");
+    closeGradient.addColorStop(1, hoveredClose ? "#d93320" : "#b91d13");
+    ctx.fillStyle = closeGradient;
+    ctx.fillRect(closeRect.x, closeRect.y, closeRect.width, closeRect.height);
+    ctx.strokeStyle = "#7a120b";
+    ctx.strokeRect(closeRect.x + 0.5, closeRect.y + 0.5, closeRect.width - 1, closeRect.height - 1);
+    ctx.strokeStyle = "#fff4ef";
+    ctx.lineWidth = 2;
     ctx.beginPath();
-    ctx.moveTo(closeRect.x + 4, closeRect.y + 4);
-    ctx.lineTo(closeRect.x + closeRect.width - 4, closeRect.y + closeRect.height - 4);
-    ctx.moveTo(closeRect.x + closeRect.width - 4, closeRect.y + 4);
-    ctx.lineTo(closeRect.x + 4, closeRect.y + closeRect.height - 4);
+    ctx.moveTo(closeRect.x + 5, closeRect.y + 5);
+    ctx.lineTo(closeRect.x + closeRect.width - 5, closeRect.y + closeRect.height - 5);
+    ctx.moveTo(closeRect.x + closeRect.width - 5, closeRect.y + 5);
+    ctx.lineTo(closeRect.x + 5, closeRect.y + closeRect.height - 5);
     ctx.stroke();
 
-    ctx.fillStyle = COLORS.taskManagerText;
-    ctx.font = `600 12px ${DESKTOP_FONT}`;
-    ctx.fillText("taskmgr.exe", rect.x + 38, rect.y + 20);
-    ctx.font = `700 13px ${DESKTOP_FONT}`;
-    ctx.fillText("GOOSE TASK MANAGER", rect.x + 18, rect.y + 62);
-    ctx.font = `12px ${DESKTOP_FONT}`;
-    ctx.fillStyle = COLORS.taskManagerSoft;
-    ctx.fillText(`RUNNING  ${visibleCargoCount()}`, rect.x + 18, rect.y + 82);
+    ctx.textBaseline = "alphabetic";
+    ctx.fillStyle = "#111";
+    ctx.font = `11px ${DESKTOP_FONT}`;
+    ctx.fillText("File", rect.x + 9, rect.y + 45);
+    ctx.fillText("Options", rect.x + 42, rect.y + 45);
+    ctx.fillText("View", rect.x + 92, rect.y + 45);
+
+    const tabY = rect.y + 55;
+    const tabHeight = 23;
+    const tabs = [
+      { label: "Applications", width: 82, active: true },
+      { label: "Processes", width: 72, active: false },
+      { label: "Performance", width: 86, active: false },
+    ];
+    let tabX = rect.x + 8;
+    for (const tab of tabs) {
+      ctx.fillStyle = tab.active ? "#ffffff" : "#d4d0c8";
+      ctx.fillRect(tabX, tabY, tab.width, tabHeight);
+      ctx.strokeStyle = "#aca899";
+      ctx.strokeRect(tabX + 0.5, tabY + 0.5, tab.width - 1, tabHeight - 1);
+      ctx.fillStyle = "#111";
+      ctx.font = `11px ${DESKTOP_FONT}`;
+      ctx.fillText(tab.label, tabX + 8, tabY + 15);
+      tabX += tab.width - 1;
+    }
+
+    const listX = rect.x + 8;
+    const listY = rect.y + 78;
+    const listWidth = rect.width - 16;
+    const listHeight = rect.height - 124;
+    ctx.fillStyle = "#ffffff";
+    ctx.fillRect(listX, listY, listWidth, listHeight);
+    ctx.strokeStyle = "#aca899";
+    ctx.strokeRect(listX + 0.5, listY + 0.5, listWidth - 1, listHeight - 1);
+
+    ctx.fillStyle = "#ece9d8";
+    ctx.fillRect(listX + 1, listY + 1, listWidth - 2, 18);
+    ctx.strokeStyle = "#d4d0c8";
+    ctx.beginPath();
+    ctx.moveTo(listX + 1, listY + 19.5);
+    ctx.lineTo(listX + listWidth - 1, listY + 19.5);
+    ctx.moveTo(listX + 182, listY + 1);
+    ctx.lineTo(listX + 182, listY + listHeight - 1);
+    ctx.stroke();
+    ctx.fillStyle = "#111";
+    ctx.font = `11px ${DESKTOP_FONT}`;
+    ctx.fillText("Task", listX + 8, listY + 14);
+    ctx.fillText("Status", listX + 190, listY + 14);
 
     if (!rows.length) {
-      ctx.fillText("no goose tabs running", rect.x + 18, rect.y + 118);
+      ctx.fillStyle = "#666";
+      ctx.fillText("No goose tabs running", listX + 9, listY + 43);
     }
 
-    for (const row of rows) {
-      const hovered = state.hoveredUiTarget === `task-end:${row.cargo.id}`;
-      ctx.fillStyle = "rgba(214, 224, 255, 0.54)";
-      ctx.fillRect(row.rect.x, row.rect.y, row.rect.width, row.rect.height);
-      ctx.strokeStyle = "rgba(132, 150, 212, 0.2)";
-      ctx.strokeRect(row.rect.x, row.rect.y, row.rect.width, row.rect.height);
-
-      ctx.fillStyle = COLORS.taskManagerText;
-      ctx.font = `600 11px ${DESKTOP_FONT}`;
-      const kindLabel = row.cargo.kind === "meme" ? "MEME" : "NOTE";
-      ctx.fillText(`${kindLabel}  ${row.cargo.title}`, row.rect.x + 10, row.rect.y + 15);
-
-      ctx.fillStyle = hovered ? "rgba(255, 104, 86, 0.98)" : COLORS.taskManagerKill;
-      ctx.fillRect(row.endRect.x, row.endRect.y, row.endRect.width, row.endRect.height);
-      ctx.strokeStyle = COLORS.taskManagerKillEdge;
-      ctx.strokeRect(row.endRect.x, row.endRect.y, row.endRect.width, row.endRect.height);
-      ctx.fillStyle = "#fff5f4";
-      ctx.font = `600 10px ${DESKTOP_FONT}`;
-      ctx.fillText("End Task", row.endRect.x + 8, row.endRect.y + 12);
+    for (let index = 0; index < rows.length; index += 1) {
+      const row = rows[index];
+      const isSelected = index === 0;
+      const y = row.rect.y;
+      if (isSelected) {
+        ctx.fillStyle = "#316ac5";
+        ctx.fillRect(listX + 2, y, listWidth - 4, 20);
+      }
+      ctx.fillStyle = isSelected ? "#ffffff" : "#111";
+      ctx.font = `11px ${DESKTOP_FONT}`;
+      const kindLabel = row.cargo.kind === "meme" ? "Image" : "Note";
+      ctx.fillText(`${kindLabel} - ${row.cargo.title}`, listX + 8, y + 15);
+      ctx.fillText("Running", listX + 190, y + 15);
     }
+
+    const buttonRect = selectedRow?.endRect || {
+      x: rect.x + rect.width - 86,
+      y: rect.y + rect.height - 34,
+      width: 76,
+      height: 24,
+    };
+    const hoveredEnd = selectedRow && state.hoveredUiTarget === `task-end:${selectedRow.cargo.id}`;
+    ctx.fillStyle = hoveredEnd ? "#f5f3ea" : "#ece9d8";
+    ctx.fillRect(buttonRect.x, buttonRect.y, buttonRect.width, buttonRect.height);
+    ctx.strokeStyle = "#ffffff";
+    ctx.beginPath();
+    ctx.moveTo(buttonRect.x + 0.5, buttonRect.y + buttonRect.height - 0.5);
+    ctx.lineTo(buttonRect.x + 0.5, buttonRect.y + 0.5);
+    ctx.lineTo(buttonRect.x + buttonRect.width - 0.5, buttonRect.y + 0.5);
+    ctx.stroke();
+    ctx.strokeStyle = "#808080";
+    ctx.beginPath();
+    ctx.moveTo(buttonRect.x + buttonRect.width - 0.5, buttonRect.y + 0.5);
+    ctx.lineTo(buttonRect.x + buttonRect.width - 0.5, buttonRect.y + buttonRect.height - 0.5);
+    ctx.lineTo(buttonRect.x + 0.5, buttonRect.y + buttonRect.height - 0.5);
+    ctx.stroke();
+    ctx.fillStyle = rows.length ? "#111" : "#777";
+    ctx.font = `11px ${DESKTOP_FONT}`;
+    ctx.fillText("End Task", buttonRect.x + 16, buttonRect.y + 16);
+
+    ctx.fillStyle = "#ece9d8";
+    ctx.fillRect(rect.x + 4, rect.y + rect.height - 23, rect.width - 96, 19);
+    ctx.strokeStyle = "#aca899";
+    ctx.strokeRect(rect.x + 4.5, rect.y + rect.height - 22.5, rect.width - 100, 18);
+    ctx.fillStyle = "#111";
+    ctx.font = `11px ${DESKTOP_FONT}`;
+    ctx.fillText(`Processes: ${visibleCargoCount()}`, rect.x + 10, rect.y + rect.height - 9);
 
     ctx.restore();
   }
@@ -372,6 +572,22 @@
         edge: "rgba(52, 126, 184, 0.38)",
         text: "rgba(16, 78, 132, 0.9)",
         glow: "rgba(80, 174, 238, 0.28)",
+      };
+    }
+    if (appId === "chrome") {
+      return {
+        body: "rgba(246, 252, 255, 0.98)",
+        edge: "rgba(62, 128, 92, 0.38)",
+        text: "rgba(34, 74, 52, 0.9)",
+        glow: "rgba(80, 210, 255, 0.28)",
+      };
+    }
+    if (appId === "skype") {
+      return {
+        body: "rgba(224, 246, 255, 0.98)",
+        edge: "rgba(30, 138, 198, 0.38)",
+        text: "rgba(12, 84, 134, 0.9)",
+        glow: "rgba(70, 196, 255, 0.3)",
       };
     }
     return {
@@ -572,6 +788,43 @@
       return;
     }
 
+    if (appId === "chrome") {
+      ctx.fillStyle = "rgba(234, 67, 53, 0.98)";
+      ctx.beginPath();
+      ctx.arc(size * 0.5, size * 0.5, size * 0.3, -Math.PI * 0.15, Math.PI * 0.62);
+      ctx.lineTo(size * 0.5, size * 0.5);
+      ctx.fill();
+      ctx.fillStyle = "rgba(251, 188, 5, 0.98)";
+      ctx.beginPath();
+      ctx.arc(size * 0.5, size * 0.5, size * 0.3, Math.PI * 0.62, Math.PI * 1.28);
+      ctx.lineTo(size * 0.5, size * 0.5);
+      ctx.fill();
+      ctx.fillStyle = "rgba(52, 168, 83, 0.98)";
+      ctx.beginPath();
+      ctx.arc(size * 0.5, size * 0.5, size * 0.3, Math.PI * 1.28, Math.PI * 1.85);
+      ctx.lineTo(size * 0.5, size * 0.5);
+      ctx.fill();
+      ctx.fillStyle = "rgba(66, 133, 244, 0.98)";
+      ctx.beginPath();
+      ctx.arc(size * 0.5, size * 0.5, size * 0.13, 0, TAU);
+      ctx.fill();
+      return;
+    }
+
+    if (appId === "skype") {
+      ctx.fillStyle = "rgba(0, 175, 240, 0.96)";
+      ctx.beginPath();
+      ctx.arc(size * 0.5, size * 0.5, size * 0.28, 0, TAU);
+      ctx.arc(size * 0.31, size * 0.38, size * 0.12, 0, TAU);
+      ctx.arc(size * 0.69, size * 0.62, size * 0.12, 0, TAU);
+      ctx.fill();
+      ctx.fillStyle = "#fff";
+      ctx.font = `800 ${size * 0.34}px ${DESKTOP_FONT}`;
+      ctx.textAlign = "center";
+      ctx.fillText("S", size * 0.5, size * 0.62);
+      return;
+    }
+
     ctx.fillStyle = COLORS.fistSkin;
     roundedRectPath(size * 0.22, size * 0.34, size * 0.44, size * 0.28, 10);
     ctx.fill();
@@ -621,11 +874,15 @@
           ? state.minesweeper.iconImage
         : appId === "internetExplorer"
           ? state.internetExplorer.iconImage
+        : appId === "chrome"
+          ? state.chrome.iconImage
+        : appId === "skype"
+          ? state.skype.iconImage
         : appId === "fist"
           ? state.fist.iconImage
           : null;
     const hasLoadedIconImage = iconImage?.complete && iconImage.naturalWidth > 0;
-    const isBareImageIcon = appId === "flamethrower" || appId === "katana" || appId === "nuke" || appId === "thunder" || appId === "gauntlet" || appId === "bread" || appId === "paint" || appId === "spotify" || appId === "minesweeper" || appId === "internetExplorer" || appId === "fist";
+    const isBareImageIcon = appId === "flamethrower" || appId === "katana" || appId === "nuke" || appId === "thunder" || appId === "gauntlet" || appId === "bread" || appId === "paint" || appId === "spotify" || appId === "minesweeper" || appId === "internetExplorer" || appId === "chrome" || appId === "skype" || appId === "fist";
     const drawIconBackground = !isBareImageIcon;
 
     ctx.save();
@@ -660,9 +917,7 @@
       ctx.save();
       ctx.shadowColor = palette.glow;
       ctx.shadowBlur = hovered ? 12 : 6;
-      const iconDrawSize = size * 0.84;
-      const iconDrawOffset = (size - iconDrawSize) / 2;
-      ctx.drawImage(iconImage, iconDrawOffset, iconDrawOffset, iconDrawSize, iconDrawSize);
+      drawNormalizedIconImage(iconImage, size * 0.5, size * 0.5, size * 0.78, size * 0.78);
       ctx.restore();
     } else {
       drawDesktopToolGlyph(appId, size, pulse, selected);
@@ -705,9 +960,7 @@
       ctx.save();
       ctx.shadowColor = COLORS.antiMalwareGlow;
       ctx.shadowBlur = hovered ? 22 : 12;
-      const iconDrawSize = size * 0.86;
-      const iconDrawOffset = (size - iconDrawSize) / 2;
-      ctx.drawImage(iconImage, iconDrawOffset, iconDrawOffset, iconDrawSize, iconDrawSize);
+      drawNormalizedIconImage(iconImage, size * 0.5, size * 0.5, size * 0.78, size * 0.78);
       ctx.restore();
       drawDesktopLabel(antiMalwareLabel(), size * 0.5, size + 20);
       ctx.restore();

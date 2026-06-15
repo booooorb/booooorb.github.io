@@ -115,6 +115,31 @@
     };
   }
 
+  function clearBlackHoleInterruptedTools() {
+    if (state.chrome) {
+      state.chrome.droids.length = 0;
+      state.chrome.beams.length = 0;
+      state.chrome.paths.length = 0;
+      state.chrome.explosions.length = 0;
+    }
+    if (typeof clearChromeDroidElements === "function") {
+      clearChromeDroidElements();
+    }
+
+    if (state.skype) {
+      state.skype.cells.length = 0;
+      state.skype.pops.length = 0;
+    }
+
+    for (const cargo of state.cargoes) {
+      if (!cargo.skypeCellId) {
+        continue;
+      }
+      cargo.skypeCellId = null;
+      cargo.skypeCellProgress = 0;
+    }
+  }
+
   function releaseInternetExplorerSingularity() {
     const explorer = state.internetExplorer;
     const center = explorer.singularity?.center || internetExplorerCenter();
@@ -217,6 +242,7 @@
       singularity.phase = "blackout";
       singularity.age = 0;
       state.internetExplorer.specks.length = 0;
+      clearBlackHoleInterruptedTools();
     } else if (singularity.phase === "blackout") {
       updateInternetExplorerSuction(dt, singularity.center);
       if (singularity.age >= INTERNET_EXPLORER_BLACKOUT_DURATION) {

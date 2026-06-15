@@ -3,11 +3,14 @@
     if (blackout) {
       ctx.clearRect(0, 0, state.width, state.height);
     } else {
+      drawMyComputerIcon();
       drawAntiMalwareIcon();
       drawRecycleBinIcon();
       drawTaskManagerIcon();
       drawDesktopToolApps();
     }
+
+    drawSkypeCells("capturing");
 
     for (const cargo of state.cargoes) {
       drawCargo(cargo);
@@ -51,12 +54,13 @@
     }
   }
 
-  function renderEffectLayer(flamethrower, katana, thunder, nuke, gauntlet, bread, paint, spotify, minesweeper, fist) {
+  function renderEffectLayer(flamethrower, katana, thunder, nuke, gauntlet, bread, paint, spotify, minesweeper, chrome, skype, fist) {
     if (internetExplorerBlackoutActive()) {
       return;
     }
 
     gauntlet.animation.drawDust();
+    chrome.animation.drawBeams();
     drawRecycleBinEffect();
     drawAntiMalwareConnection();
     drawAntiMalwareHexDigits();
@@ -74,12 +78,15 @@
     bread.animation.drawCursor();
     paint.animation.drawCursor();
     minesweeper.animation.drawCursor();
+    chrome.animation.drawCursor();
     fist.animation.drawCursor();
     flamethrower.animation.drawReticle();
     nuke.animation.drawEffects();
     thunder.animation.drawEffects();
     drawSpotifyWaves();
     drawMinesweeperExplosions();
+    drawSkypeCells("loose");
+    drawSkypePops();
     toolManager.drawCurrencyBursts();
     fist.animation.drawCracks();
   }
@@ -94,6 +101,8 @@
     const paint = toolManager.get("paint");
     const spotify = toolManager.get("spotify");
     const minesweeper = toolManager.get("minesweeper");
+    const chrome = toolManager.get("chrome");
+    const skype = toolManager.get("skype");
     const fist = toolManager.get("fist");
 
     ctx.setTransform(1, 0, 0, 1, 0, 0);
@@ -102,7 +111,7 @@
 
     renderDesktopLayer(katana, fist);
     renderGeeseLayer();
-    renderEffectLayer(flamethrower, katana, thunder, nuke, gauntlet, bread, paint, spotify, minesweeper, fist);
+    renderEffectLayer(flamethrower, katana, thunder, nuke, gauntlet, bread, paint, spotify, minesweeper, chrome, skype, fist);
     drawInternetExplorerBlackoutFlash();
     drawInternetExplorerReturnTransition();
   }

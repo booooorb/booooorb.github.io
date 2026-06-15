@@ -359,6 +359,9 @@
     if (state.antiMalware.windowOpen && pointInRect(point, antiMalwareWindowRect())) {
       return "anti-window-body";
     }
+    if (state.myComputer.deployed && pointInRect(point, myComputerIconRect())) {
+      return "my-computer-icon";
+    }
     if (state.antiMalware.deployed && pointInRect(point, antiMalwareIconRect())) {
       return "anti-icon";
     }
@@ -397,7 +400,10 @@
     let origin = pt();
     clearDesktopSelections();
 
-    if (target === "anti-window") {
+    if (target === "my-computer-icon") {
+      origin = state.myComputer.iconPos;
+      state.myComputer.selected = true;
+    } else if (target === "anti-window") {
       origin = state.antiMalware.windowPos;
     } else if (target === "anti-icon") {
       origin = state.antiMalware.iconPos;
@@ -436,6 +442,16 @@
     }
 
     const nextPos = sub(point, anti.drag.offset);
+    if (anti.drag.target === "my-computer-icon") {
+      const size = myComputerIconSize();
+      const clamped = clampRectPosition(nextPos, size, size + 26, 18);
+      if (!anti.drag.moved && dist(clamped, state.myComputer.iconPos) > 2) {
+        anti.drag.moved = true;
+      }
+      state.myComputer.iconPos = clamped;
+      return;
+    }
+
     if (anti.drag.target === "anti-window") {
       const clamped = clampRectPosition(nextPos, anti.width, anti.height, 18);
       if (!anti.drag.moved && dist(clamped, anti.windowPos) > 2) {

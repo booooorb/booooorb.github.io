@@ -26,7 +26,7 @@
     }
   }
 
-  function splitCargoWithKatana(cargo, start, end) {
+  function splitCargoWithKatana(cargo, start, end, options = {}) {
     const slice = sub(end, start);
     if (mag(slice) < KATANA_SLICE_MIN) {
       return false;
@@ -55,6 +55,8 @@
         spin: rand(i === 0 ? -4.8 : 1.6, i === 0 ? -1.6 : 4.8),
         axis: splitAxis,
         side: i,
+        burned: !!options.burned,
+        burnSeed: rand(0, TAU),
       });
     }
 

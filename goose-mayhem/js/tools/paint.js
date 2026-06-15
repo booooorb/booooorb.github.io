@@ -166,7 +166,7 @@
 
   function drawPaintCursor() {
     if (!state.paint.active || !state.pointer.inside) {
-      return;
+      return; 
     }
 
     const pulse = Math.sin(state.paint.pulse * 1.7) * 0.5 + 0.5;

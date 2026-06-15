@@ -274,10 +274,15 @@
   const PAINT_ICON_PATH = "assets/icons/MSPaint.png";
   const GAUNTLET_ICON_PATH = "assets/icons/infinity_gauntlet.png";
   const BREAD_ICON_PATH = "assets/icons/bread.png";
-  const SPOTIFY_ICON_PATH = "assets/icons/spotify.png";
+  const SPOTIFY_ICON_PATH = "assets/icons/Spotify.png";
   const MINESWEEPER_ICON_PATH = "assets/icons/minesweeper.png";
   const INTERNET_EXPLORER_ICON_PATH = "assets/icons/internet-explorer.png";
+  const CHROME_ICON_PATH = "assets/icons/chrome.png";
+  const SKYPE_ICON_PATH = "assets/icons/skupe.png";
+  const MY_COMPUTER_ICON_PATH = "assets/icons/My Computer.png";
+  const CHROME_DROID_EFFECT_PATH = "assets/effects/chrome-gif.gif";
   const MINESWEEPER_FLAG_EFFECT_PATH = "assets/effects/minesweeper_flag_waving_ultralight_48.webp";
+  const SKYPE_CELL_EFFECT_PATH = "assets/effects/skype_cell.png";
   const FIREFOX_FIRE_EFFECT_PATH = "assets/effects/firefox-fire.png";
   const BROKEN_GLASS_EFFECT_PATH = "assets/effects/broken_glass_PNG38.png";
   const SNIPPING_TOOL_SNIPPER_EFFECT_PATH = "assets/effects/snipping-tool-snipper.png";
@@ -371,6 +376,20 @@
       desktopLabel: "Internet Explorer",
       shortLabel: "IE",
       hotkey: "I",
+    },
+    {
+      id: "chrome",
+      name: "Google Chrome",
+      desktopLabel: "Google Chrome",
+      shortLabel: "Chrome",
+      hotkey: "C",
+    },
+    {
+      id: "skype",
+      name: "Skype",
+      desktopLabel: "Skype",
+      shortLabel: "Skype",
+      hotkey: "V",
     },
     {
       id: "fist",
@@ -480,6 +499,12 @@
     shop: {
       open: false,
       message: "",
+    },
+    myComputer: {
+      deployed: true,
+      selected: false,
+      iconPos: pt(),
+      iconImage: null,
     },
     desktopApps: Object.fromEntries(
       DESKTOP_TOOL_APPS.map((app) => [
@@ -647,6 +672,25 @@
       singularity: null,
       returnTransition: null,
     },
+    chrome: {
+      active: false,
+      iconImage: null,
+      droidImage: null,
+      pulse: 0,
+      droids: [],
+      beams: [],
+      paths: [],
+      explosions: [],
+    },
+    skype: {
+      active: false,
+      iconImage: null,
+      cellImage: null,
+      pulse: 0,
+      cooldownUntil: 0,
+      cells: [],
+      pops: [],
+    },
     fist: {
       active: false,
       iconImage: null,
@@ -669,6 +713,10 @@
     state.recycleBin.iconImage = new Image();
     state.recycleBin.iconImage.decoding = "async";
     state.recycleBin.iconImage.src = RECYCLE_BIN_ICON_PATH;
+
+    state.myComputer.iconImage = new Image();
+    state.myComputer.iconImage.decoding = "async";
+    state.myComputer.iconImage.src = MY_COMPUTER_ICON_PATH;
 
     state.flamethrower.iconImage = new Image();
     state.flamethrower.iconImage.decoding = "async";
@@ -737,6 +785,22 @@
     state.internetExplorer.blackHoleImage = new Image();
     state.internetExplorer.blackHoleImage.decoding = "async";
     state.internetExplorer.blackHoleImage.src = BLACK_HOLE_EFFECT_PATH;
+
+    state.chrome.iconImage = new Image();
+    state.chrome.iconImage.decoding = "async";
+    state.chrome.iconImage.src = CHROME_ICON_PATH;
+
+    state.chrome.droidImage = new Image();
+    state.chrome.droidImage.decoding = "async";
+    state.chrome.droidImage.src = CHROME_DROID_EFFECT_PATH;
+
+    state.skype.iconImage = new Image();
+    state.skype.iconImage.decoding = "async";
+    state.skype.iconImage.src = SKYPE_ICON_PATH;
+
+    state.skype.cellImage = new Image();
+    state.skype.cellImage.decoding = "async";
+    state.skype.cellImage.src = SKYPE_CELL_EFFECT_PATH;
 
     state.memeImages = MEME_PATHS.map((src) => {
       const image = new Image();

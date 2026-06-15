@@ -101,6 +101,24 @@ body {
   display: none;
 }
 
+.chrome-droid-gif {
+  position: absolute;
+  left: 0;
+  top: 0;
+  z-index: 0;
+  display: block;
+  width: 64px;
+  height: 64px;
+  object-fit: contain;
+  pointer-events: none;
+  transform-origin: 50% 50%;
+  will-change: transform, opacity;
+}
+
+.stage--black-hole .chrome-droid-gif {
+  opacity: 0;
+}
+
 .xp-desktop {
   position: absolute;
   inset: 0;
@@ -615,7 +633,7 @@ body {
 }
 
 .store-card__icon {
-  --store-icon-image-size: 38px;
+  --store-icon-image-size: 42px;
   display: grid;
   place-items: center;
   width: 46px;
@@ -633,101 +651,120 @@ body {
     0 4px 10px rgba(41, 79, 124, 0.18);
 }
 
+.store-card__icon canvas {
+  width: 46px;
+  height: 46px;
+  display: block;
+}
+
 .store-card__icon--antiMalware {
   border-color: transparent;
-  background: url("assets/icons/malwarebytes.png") center / var(--store-icon-image-size) var(--store-icon-image-size) no-repeat;
+  background: none;
   box-shadow: none;
   text-shadow: none;
 }
 
 .store-card__icon--recycleBin {
   border-color: transparent;
-  background: url("assets/icons/trash-bin.png") center / var(--store-icon-image-size) var(--store-icon-image-size) no-repeat;
+  background: none;
   box-shadow: none;
   text-shadow: none;
 }
 
 .store-card__icon--taskManager {
   border-color: transparent;
-  background:
-    url("assets/icons/task-manager.png") center / var(--store-icon-image-size) var(--store-icon-image-size) no-repeat;
+  background: none;
   box-shadow: none;
   text-shadow: none;
 }
 
 .store-card__icon--flamethrower {
   border-color: transparent;
-  background: url("assets/icons/firefox.png") center / var(--store-icon-image-size) var(--store-icon-image-size) no-repeat;
+  background: none;
   box-shadow: none;
   text-shadow: none;
 }
 
 .store-card__icon--katana {
   border-color: transparent;
-  background: url("assets/icons/snipping-tool.png") center / var(--store-icon-image-size) var(--store-icon-image-size) no-repeat;
+  background: none;
   box-shadow: none;
   text-shadow: none;
 }
 
 .store-card__icon--nuke {
   border-color: transparent;
-  background: url("assets/icons/nuke.png") center / var(--store-icon-image-size) var(--store-icon-image-size) no-repeat;
+  background: none;
   box-shadow: none;
   text-shadow: none;
 }
 
 .store-card__icon--thunder {
   border-color: transparent;
-  background: url("assets/icons/weather.png") center / var(--store-icon-image-size) var(--store-icon-image-size) no-repeat;
+  background: none;
   box-shadow: none;
   text-shadow: none;
 }
 
 .store-card__icon--gauntlet {
   border-color: transparent;
-  background: url("assets/icons/infinity_gauntlet.png") center / var(--store-icon-image-size) var(--store-icon-image-size) no-repeat;
+  background: none;
   box-shadow: none;
   text-shadow: none;
 }
 
 .store-card__icon--bread {
   border-color: transparent;
-  background: url("assets/icons/bread.png") center / var(--store-icon-image-size) var(--store-icon-image-size) no-repeat;
+  background: none;
   box-shadow: none;
   text-shadow: none;
 }
 
 .store-card__icon--paint {
   border-color: transparent;
-  background: url("assets/icons/MSPaint.png") center / var(--store-icon-image-size) var(--store-icon-image-size) no-repeat;
+  background: none;
   box-shadow: none;
   text-shadow: none;
 }
 
 .store-card__icon--spotify {
   border-color: transparent;
-  background: url("assets/icons/spotify.png") center / var(--store-icon-image-size) var(--store-icon-image-size) no-repeat;
+  background: none;
   box-shadow: none;
   text-shadow: none;
 }
 
 .store-card__icon--minesweeper {
   border-color: transparent;
-  background: url("assets/icons/minesweeper.png") center / var(--store-icon-image-size) var(--store-icon-image-size) no-repeat;
+  background: none;
   box-shadow: none;
   text-shadow: none;
 }
 
 .store-card__icon--internetExplorer {
   border-color: transparent;
-  background: url("assets/icons/internet-explorer.png") center / var(--store-icon-image-size) var(--store-icon-image-size) no-repeat;
+  background: none;
+  box-shadow: none;
+  text-shadow: none;
+}
+
+.store-card__icon--chrome {
+  border-color: transparent;
+  background: none;
+  box-shadow: none;
+  text-shadow: none;
+}
+
+.store-card__icon--skype {
+  border-color: transparent;
+  background: none;
   box-shadow: none;
   text-shadow: none;
 }
 
 .store-card__icon--fist {
   border-color: transparent;
-  background: url("assets/icons/riot-games.png") center / var(--store-icon-image-size) var(--store-icon-image-size) no-repeat;
+  background: none;
   box-shadow: none;
   text-shadow: none;
 }

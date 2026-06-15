@@ -113,6 +113,52 @@
     ctx.restore();
   }
 
+  function drawCargoChromeLaserMark(cargo) {
+    const mark = cargo.chromeLaserMark;
+    if (!mark) {
+      return;
+    }
+
+    const progress = clamp(mark.age / mark.duration, 0, 1);
+    const burnT = cubicEaseInOut(progress);
+    const point = mark.local || pt(cargo.width / 2, cargo.height / 2);
+    const direction = mark.direction || norm(pt(1, 1));
+    const tangent = norm(pt(direction.y, -direction.x));
+    const maxLength = Math.hypot(cargo.width, cargo.height) * 0.62;
+    const length = lerp(10, maxLength, burnT);
+    const crackStart = add(point, mul(tangent, -length * 0.5));
+    const crackEnd = add(point, mul(tangent, length * 0.5));
+    const pulse = Math.sin(state.time * 18 + mark.seed) * 0.5 + 0.5;
+
+    ctx.save();
+    ctx.beginPath();
+    ctx.rect(0, 0, cargo.width, cargo.height);
+    ctx.clip();
+
+    ctx.globalCompositeOperation = "source-over";
+    ctx.strokeStyle = `rgba(42, 21, 14, ${0.56 + burnT * 0.28})`;
+    ctx.lineWidth = lerp(5, 9, burnT);
+    ctx.lineCap = "round";
+    ctx.beginPath();
+    ctx.moveTo(crackStart.x, crackStart.y);
+    ctx.lineTo(crackEnd.x, crackEnd.y);
+    ctx.stroke();
+
+    ctx.globalCompositeOperation = "lighter";
+    ctx.strokeStyle = `rgba(255, 52, 36, ${0.28 + burnT * 0.28 + pulse * 0.08})`;
+    ctx.lineWidth = lerp(1.5, 3.2, burnT);
+    ctx.beginPath();
+    ctx.moveTo(crackStart.x, crackStart.y);
+    ctx.lineTo(crackEnd.x, crackEnd.y);
+    ctx.stroke();
+
+    ctx.fillStyle = `rgba(255, 235, 184, ${0.36 + pulse * 0.28})`;
+    ctx.beginPath();
+    ctx.arc(point.x, point.y, lerp(4, 8, burnT), 0, TAU);
+    ctx.fill();
+    ctx.restore();
+  }
+
   function drawCargoSurfaceRegion(cargo, hovered, burning, malwareGlow, dustProgress, sourceRect, destRect) {
     if (sourceRect.width <= 0.5 || sourceRect.height <= 0.5 || destRect.width <= 0.5 || destRect.height <= 0.5) {
       return;
@@ -207,6 +253,7 @@
     const dustProgress = cargoDustProgress(cargo);
     const vacuumProgress = cargo.vacuumProgress || 0;
     const blackHoleProgress = cargo.blackHoleProgress || 0;
+    const skypeCellProgress = cargo.skypeCellProgress || 0;
     const malwareProgress = antiMalwareConnectionProgress(cargo.id);
     const malwareGlow = malwareProgress > 0
       ? clamp(0.12 + Math.pow(malwareProgress, 1.35) * 0.88, 0, 1)
@@ -266,6 +313,15 @@
       ctx.translate(cargo.width * 0.5, cargo.height * 0.5);
       ctx.rotate((cargo.blackHoleSpin || 0) * pullT);
       const scale = Math.max(0.035, 1 - pullT * 0.965);
+      ctx.scale(scale, scale);
+      ctx.translate(-cargo.width * 0.5, -cargo.height * 0.5);
+    }
+    if (skypeCellProgress > 0) {
+      const consumeT = cubicEaseInOut(clamp(skypeCellProgress, 0, 1));
+      ctx.globalAlpha *= Math.max(0.78, 1 - consumeT * 0.12);
+      ctx.translate(cargo.width * 0.5, cargo.height * 0.5);
+      ctx.rotate(Math.sin(state.time * 6.5 + cargo.id) * consumeT * 0.08);
+      const scale = lerp(1, 0.14, consumeT);
       ctx.scale(scale, scale);
       ctx.translate(-cargo.width * 0.5, -cargo.height * 0.5);
     }
@@ -355,6 +411,19 @@
     ctx.restore();
 
     drawCargoPaintLayer(cargo);
+    drawCargoChromeLaserMark(cargo);
+
+    if (skypeCellProgress > 0) {
+      const sheen = Math.sin(state.time * 9 + cargo.id) * 0.5 + 0.5;
+      ctx.save();
+      ctx.globalCompositeOperation = "screen";
+      ctx.fillStyle = `rgba(126, 226, 255, ${0.08 + sheen * 0.035})`;
+      ctx.fillRect(0, 0, cargo.width, cargo.height);
+      ctx.strokeStyle = `rgba(235, 252, 255, ${0.16 + sheen * 0.08})`;
+      ctx.lineWidth = 2;
+      ctx.strokeRect(1, 1, cargo.width - 2, cargo.height - 2);
+      ctx.restore();
+    }
 
     if (burnGeometry && vacuumProgress < 0.02) {
       const emberGlow = clamp(cargo.fireLevel * 0.92 + cargo.heat * 0.64 + damage * 0.26, 0, 1);
@@ -417,8 +486,10 @@
       drawCargoSnapshotFace(cargo, { showClose: false });
       ctx.restore();
 
-      ctx.strokeStyle = "rgba(255, 255, 255, 0.68)";
-      ctx.lineWidth = 1.5;
+      const burned = !!piece.burned;
+      const burnPulse = burned ? (Math.sin(state.time * 14 + piece.burnSeed) * 0.5 + 0.5) : 0;
+      ctx.strokeStyle = burned ? "rgba(48, 24, 15, 0.82)" : "rgba(255, 255, 255, 0.68)";
+      ctx.lineWidth = burned ? 7 : 1.5;
       if (piece.axis === "vertical") {
         const seamX = cargo.width * 0.5;
         ctx.beginPath();
@@ -431,6 +502,26 @@
         ctx.moveTo(6, seamY);
         ctx.lineTo(cargo.width - 6, seamY);
         ctx.stroke();
+      }
+      if (burned) {
+        ctx.save();
+        ctx.globalCompositeOperation = "lighter";
+        ctx.strokeStyle = `rgba(255, 71, 38, ${0.34 + burnPulse * 0.18})`;
+        ctx.lineWidth = 2.6;
+        if (piece.axis === "vertical") {
+          const seamX = cargo.width * 0.5;
+          ctx.beginPath();
+          ctx.moveTo(seamX, 7);
+          ctx.lineTo(seamX, cargo.height - 7);
+          ctx.stroke();
+        } else {
+          const seamY = cargo.height * 0.5;
+          ctx.beginPath();
+          ctx.moveTo(7, seamY);
+          ctx.lineTo(cargo.width - 7, seamY);
+          ctx.stroke();
+        }
+        ctx.restore();
       }
       ctx.restore();
     }

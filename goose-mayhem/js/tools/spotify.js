@@ -4,7 +4,7 @@
       return pt(state.width / 2, state.height / 2);
     }
     const rect = desktopToolIconRect("spotify");
-    return pt(rect.x + rect.width / 2, rect.y + rect.height / 2);
+    return pt(rect.x + rect.width / 2, rect.y + rect.width * 0.28);
   }
 
   function repelGooseFromSpotify(goose, origin, radius, power = 1) {
