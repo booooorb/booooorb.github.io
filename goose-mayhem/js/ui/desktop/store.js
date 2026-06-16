@@ -22,6 +22,8 @@
       bread: BREAD_ICON_PATH,
       paint: PAINT_ICON_PATH,
       spotify: SPOTIFY_ICON_PATH,
+      mediaPlayer: MEDIA_PLAYER_ICON_PATH,
+      notepad: NOTEPAD_ICON_PATH,
       minesweeper: MINESWEEPER_ICON_PATH,
       internetExplorer: INTERNET_EXPLORER_ICON_PATH,
       chrome: CHROME_ICON_PATH,

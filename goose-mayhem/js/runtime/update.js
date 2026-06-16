@@ -1,11 +1,40 @@
-  function tick(dt) {
-    state.time += dt;
-    rebuildGooseSpatialIndex();
-    for (const goose of state.geese) {
-      updateGooseTask(goose);
-      updateMovement(goose, dt);
-      updateHonk(goose);
+  function preserveFutureTimer(target, key, dt, previousTime) {
+    if (!target || !Number.isFinite(target[key]) || target[key] <= previousTime) {
+      return;
     }
+    target[key] += dt;
+  }
+
+  function preserveFrozenGooseTimers(dt, previousTime) {
+    for (const goose of state.geese) {
+      preserveFutureTimer(goose, "pauseUntil", dt, previousTime);
+      preserveFutureTimer(goose, "nextMayhemTime", dt, previousTime);
+      preserveFutureTimer(goose, "honkUntil", dt, previousTime);
+      preserveFutureTimer(goose, "nextHonkTime", dt, previousTime);
+      preserveFutureTimer(goose, "nextSeparationSampleAt", dt, previousTime);
+      preserveFutureTimer(goose, "spotifyAvoidUntil", dt, previousTime);
+      preserveFutureTimer(goose.taskData, "finishTime", dt, previousTime);
+      preserveFutureTimer(goose.taskData, "nextTurnTime", dt, previousTime);
+      preserveFutureTimer(goose.taskData, "waitUntil", dt, previousTime);
+    }
+  }
+
+  function tick(dt) {
+    const previousTime = state.time;
+    state.time += dt;
+    const geeseFrozen = mediaPlayerFreezeActive();
+
+    rebuildGooseSpatialIndex();
+    if (geeseFrozen) {
+      preserveFrozenGooseTimers(dt, previousTime);
+    } else {
+      for (const goose of state.geese) {
+        updateGooseTask(goose);
+        updateMovement(goose, dt);
+        updateHonk(goose);
+      }
+    }
+
     updateCargoes();
     updateAntiMalware(dt);
     updateRecycleBin(dt);

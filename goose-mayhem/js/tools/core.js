@@ -54,6 +54,7 @@
       || state.thunder.active
       || state.bread.active
       || state.paint.active
+      || state.notepad.active
       || state.minesweeper.active
       || state.katana.active
       || state.flamethrower.active;
@@ -92,6 +93,7 @@
     "thunder",
     "bread",
     "paint",
+    "notepad",
     "minesweeper",
     "fist",
   ];
@@ -117,6 +119,12 @@
     if (toolId === "paint") {
       state.paint.active = false;
       state.paint.painting = false;
+      return;
+    }
+
+    if (toolId === "notepad") {
+      state.notepad.active = false;
+      state.notepad.buffer = "";
       return;
     }
 

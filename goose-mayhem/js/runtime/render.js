@@ -54,11 +54,12 @@
     }
   }
 
-  function renderEffectLayer(flamethrower, katana, thunder, nuke, gauntlet, bread, paint, spotify, minesweeper, chrome, skype, fist) {
+  function renderEffectLayer(flamethrower, katana, thunder, nuke, gauntlet, bread, paint, spotify, notepad, minesweeper, chrome, skype, fist) {
     if (internetExplorerBlackoutActive()) {
       return;
     }
 
+    drawMediaPlayerEffects();
     gauntlet.animation.drawDust();
     chrome.animation.drawBeams();
     drawRecycleBinEffect();
@@ -77,6 +78,8 @@
     thunder.animation.drawCursor();
     bread.animation.drawCursor();
     paint.animation.drawCursor();
+    notepad.animation.drawProjectiles();
+    notepad.animation.drawCursor();
     minesweeper.animation.drawCursor();
     chrome.animation.drawCursor();
     fist.animation.drawCursor();
@@ -100,6 +103,7 @@
     const bread = toolManager.get("bread");
     const paint = toolManager.get("paint");
     const spotify = toolManager.get("spotify");
+    const notepad = toolManager.get("notepad");
     const minesweeper = toolManager.get("minesweeper");
     const chrome = toolManager.get("chrome");
     const skype = toolManager.get("skype");
@@ -111,7 +115,7 @@
 
     renderDesktopLayer(katana, fist);
     renderGeeseLayer();
-    renderEffectLayer(flamethrower, katana, thunder, nuke, gauntlet, bread, paint, spotify, minesweeper, chrome, skype, fist);
+    renderEffectLayer(flamethrower, katana, thunder, nuke, gauntlet, bread, paint, spotify, notepad, minesweeper, chrome, skype, fist);
     drawInternetExplorerBlackoutFlash();
     drawInternetExplorerReturnTransition();
   }

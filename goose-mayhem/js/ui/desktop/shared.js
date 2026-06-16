@@ -394,6 +394,8 @@
       gauntlet: state.gauntlet.snapping,
       bread: state.bread.active,
       paint: state.paint.active,
+      mediaPlayer: state.mediaPlayer.shockwave || state.mediaPlayer.resumeWave || state.mediaPlayer.frozen,
+      notepad: state.notepad.active,
       minesweeper: state.minesweeper.active,
       chrome: state.chrome.active,
       fist: state.fist.active,

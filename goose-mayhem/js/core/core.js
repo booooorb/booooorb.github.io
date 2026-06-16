@@ -280,6 +280,8 @@
   const CHROME_ICON_PATH = "assets/icons/chrome.png";
   const SKYPE_ICON_PATH = "assets/icons/skupe.png";
   const MY_COMPUTER_ICON_PATH = "assets/icons/My Computer.png";
+  const MEDIA_PLAYER_ICON_PATH = "assets/icons/Media Player.png";
+  const NOTEPAD_ICON_PATH = "assets/icons/Notepad.png";
   const CHROME_DROID_EFFECT_PATH = "assets/effects/chrome-gif.gif";
   const MINESWEEPER_FLAG_EFFECT_PATH = "assets/effects/minesweeper_flag_waving_ultralight_48.webp";
   const SKYPE_CELL_EFFECT_PATH = "assets/effects/skype_cell.png";
@@ -362,6 +364,20 @@
       desktopLabel: "Spotify",
       shortLabel: "Spotify",
       hotkey: "S",
+    },
+    {
+      id: "mediaPlayer",
+      name: "Media Player",
+      desktopLabel: "Media Player",
+      shortLabel: "Media",
+      hotkey: "W",
+    },
+    {
+      id: "notepad",
+      name: "Notepad",
+      desktopLabel: "Notepad",
+      shortLabel: "Notepad",
+      hotkey: "O",
     },
     {
       id: "minesweeper",
@@ -650,6 +666,23 @@
       waves: [],
       avoidZones: [],
     },
+    mediaPlayer: {
+      iconImage: null,
+      pulse: 0,
+      shockwave: null,
+      resumeWave: null,
+      frozen: false,
+      freezeUntil: 0,
+      freezeStartedAt: 0,
+    },
+    notepad: {
+      active: false,
+      iconImage: null,
+      pulse: 0,
+      buffer: "",
+      aimDir: pt(1, 0),
+      projectiles: [],
+    },
     minesweeper: {
       active: false,
       iconImage: null,
@@ -769,6 +802,14 @@
     state.spotify.iconImage = new Image();
     state.spotify.iconImage.decoding = "async";
     state.spotify.iconImage.src = SPOTIFY_ICON_PATH;
+
+    state.mediaPlayer.iconImage = new Image();
+    state.mediaPlayer.iconImage.decoding = "async";
+    state.mediaPlayer.iconImage.src = MEDIA_PLAYER_ICON_PATH;
+
+    state.notepad.iconImage = new Image();
+    state.notepad.iconImage.decoding = "async";
+    state.notepad.iconImage.src = NOTEPAD_ICON_PATH;
 
     state.minesweeper.iconImage = new Image();
     state.minesweeper.iconImage.decoding = "async";

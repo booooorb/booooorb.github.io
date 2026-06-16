@@ -12,6 +12,8 @@
   toolManager.register(new BreadTool(toolManager.context));
   toolManager.register(new PaintTool(toolManager.context));
   toolManager.register(new SpotifyTool(toolManager.context));
+  toolManager.register(new MediaPlayerTool(toolManager.context));
+  toolManager.register(new NotepadTool(toolManager.context));
   toolManager.register(new MinesweeperTool(toolManager.context));
   toolManager.register(new InternetExplorerTool(toolManager.context));
   toolManager.register(new ChromeTool(toolManager.context));

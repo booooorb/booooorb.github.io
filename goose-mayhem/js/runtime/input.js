@@ -21,6 +21,7 @@
   function updatePointerToolAim(previous, point) {
     toolManager.get("katana").updateAim(sub(point, previous));
     toolManager.get("flamethrower").updateAim(point);
+    toolManager.get("notepad").updateAim(sub(point, previous));
   }
 
   function handleToolPointerMove(uiTarget, previous, point) {
@@ -58,7 +59,7 @@
       return true;
     }
 
-    if (state.nuke.active || state.fist.active || state.thunder.active || state.bread.active || state.minesweeper.active) {
+    if (state.nuke.active || state.fist.active || state.thunder.active || state.bread.active || state.notepad.active || state.minesweeper.active) {
       if (uiTarget) {
         setPointerHover(uiTarget);
       } else {
@@ -128,7 +129,7 @@
       return;
     }
 
-    if (state.nuke.active || state.fist.active || state.thunder.active || state.bread.active) {
+    if (state.nuke.active || state.fist.active || state.thunder.active || state.bread.active || state.notepad.active) {
       clearPointerHover();
       return;
     }
@@ -150,7 +151,7 @@
   }
 
   function hoveredUiTargetAfterPointerUp() {
-    if (!state.pointer.inside || state.katana.active || state.thunder.active || state.bread.active || state.paint.active || state.minesweeper.active || state.fist.active) {
+    if (!state.pointer.inside || state.katana.active || state.thunder.active || state.bread.active || state.paint.active || state.notepad.active || state.minesweeper.active || state.fist.active) {
       return null;
     }
     return antiMalwareHitTarget(state.pointer.pos);
@@ -241,6 +242,11 @@
     }
 
     if (event.repeat) {
+      return;
+    }
+
+    if (toolManager.get("notepad").handleTyping(event)) {
+      event.preventDefault();
       return;
     }
 
@@ -355,7 +361,7 @@
     state.pointer.inside = true;
     const uiTarget = antiMalwareHitTarget(point);
 
-    if ((state.flamethrower.active || state.katana.active || state.bread.active || state.paint.active) && !uiTarget) {
+    if ((state.flamethrower.active || state.katana.active || state.bread.active || state.paint.active || state.notepad.active) && !uiTarget) {
       return;
     }
 

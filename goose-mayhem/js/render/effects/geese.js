@@ -1,14 +1,15 @@
   function drawShadow(goose) {
     const s = goose.size;
     const bodyBob = Math.abs(goose.gait) * 1.25 * s;
+    const frozen = typeof mediaPlayerFreezeActive === "function" && mediaPlayerFreezeActive();
     ctx.save();
     ctx.beginPath();
     ctx.ellipse(goose.pos.x, goose.pos.y + 2 + bodyBob, 20 * s, 15 * s, 0, 0, TAU);
-    ctx.fillStyle = COLORS.shadow;
+    ctx.fillStyle = frozen ? "rgba(28, 28, 28, 0.16)" : COLORS.shadow;
     ctx.fill();
     ctx.beginPath();
     ctx.ellipse(goose.pos.x, goose.pos.y + 3 + bodyBob, 14 * s, 10 * s, 0, 0, TAU);
-    ctx.fillStyle = COLORS.shadowCore;
+    ctx.fillStyle = frozen ? "rgba(18, 18, 18, 0.08)" : COLORS.shadowCore;
     ctx.fill();
     ctx.restore();
   }
@@ -26,6 +27,18 @@
     const head2EndPoint = add(goose.rig.head2EndPoint, mul(SCREEN_UP, bodyBob * 0.5));
     const tailStart = add(bodyCenter, mul(fwd, -8 * s));
     const tailEnd = add(add(bodyCenter, mul(fwd, -16 * s)), mul(SCREEN_UP, -1.8 * s));
+    const frozen = typeof mediaPlayerFreezeActive === "function" && mediaPlayerFreezeActive();
+    const gooseColors = frozen
+      ? {
+        bodyShadow: "#cfcfcf",
+        body: "#f7f7f7",
+        underbody: "#e4e4e4",
+        wing: "#ececec",
+        beak: "#9a9a9a",
+        feet: "#8b8b8b",
+        eye: "#111111",
+      }
+      : COLORS;
 
     const strokeLine = (from, to, width, color) => {
       ctx.beginPath();
@@ -43,44 +56,44 @@
       ctx.fill();
     };
 
-    fillCircle(goose.feet.l.pos, 4 * s, COLORS.feet);
-    fillCircle(goose.feet.r.pos, 4 * s, COLORS.feet);
+    fillCircle(goose.feet.l.pos, 4 * s, gooseColors.feet);
+    fillCircle(goose.feet.r.pos, 4 * s, gooseColors.feet);
 
     ctx.save();
     ctx.lineCap = "round";
     ctx.lineJoin = "round";
 
-    strokeLine(tailStart, tailEnd, 5 * s, COLORS.bodyShadow);
-    strokeLine(add(bodyCenter, mul(fwd, 11 * s)), add(bodyCenter, mul(fwd, -11 * s)), 24 * s, COLORS.bodyShadow);
-    strokeLine(neckBase, neckHeadPoint, 15 * s, COLORS.bodyShadow);
-    strokeLine(neckHeadPoint, head1EndPoint, 17 * s, COLORS.bodyShadow);
-    strokeLine(head1EndPoint, head2EndPoint, 12 * s, COLORS.bodyShadow);
-    strokeLine(add(underbodyCenter, mul(fwd, 7 * s)), add(underbodyCenter, mul(fwd, -7 * s)), 15 * s, COLORS.underbody);
-    strokeLine(add(bodyCenter, mul(fwd, 11 * s)), add(bodyCenter, mul(fwd, -11 * s)), 22 * s, COLORS.body);
-    strokeLine(neckBase, neckHeadPoint, 13 * s, COLORS.body);
-    strokeLine(neckHeadPoint, head1EndPoint, 15 * s, COLORS.body);
-    strokeLine(head1EndPoint, head2EndPoint, 10 * s, COLORS.body);
+    strokeLine(tailStart, tailEnd, 5 * s, gooseColors.bodyShadow);
+    strokeLine(add(bodyCenter, mul(fwd, 11 * s)), add(bodyCenter, mul(fwd, -11 * s)), 24 * s, gooseColors.bodyShadow);
+    strokeLine(neckBase, neckHeadPoint, 15 * s, gooseColors.bodyShadow);
+    strokeLine(neckHeadPoint, head1EndPoint, 17 * s, gooseColors.bodyShadow);
+    strokeLine(head1EndPoint, head2EndPoint, 12 * s, gooseColors.bodyShadow);
+    strokeLine(add(underbodyCenter, mul(fwd, 7 * s)), add(underbodyCenter, mul(fwd, -7 * s)), 15 * s, gooseColors.underbody);
+    strokeLine(add(bodyCenter, mul(fwd, 11 * s)), add(bodyCenter, mul(fwd, -11 * s)), 22 * s, gooseColors.body);
+    strokeLine(neckBase, neckHeadPoint, 13 * s, gooseColors.body);
+    strokeLine(neckHeadPoint, head1EndPoint, 15 * s, gooseColors.body);
+    strokeLine(head1EndPoint, head2EndPoint, 10 * s, gooseColors.body);
 
     strokeLine(
       add(bodyCenter, add(mul(fwd, 3 * s), mul(side, 3.5 * s))),
       add(bodyCenter, add(mul(fwd, -7 * s), mul(side, 1.2 * s))),
       4.5 * s,
-      COLORS.wing
+      gooseColors.wing
     );
     strokeLine(
       add(bodyCenter, add(mul(fwd, 3 * s), mul(side, -3.5 * s))),
       add(bodyCenter, add(mul(fwd, -7 * s), mul(side, -1.2 * s))),
       4.5 * s,
-      COLORS.wing
+      gooseColors.wing
     );
 
-    strokeLine(head2EndPoint, add(head2EndPoint, mul(fwd, 3 * s)), 9 * s, COLORS.beak);
+    strokeLine(head2EndPoint, add(head2EndPoint, mul(fwd, 3 * s)), 9 * s, gooseColors.beak);
     ctx.restore();
 
     const eyeBase = add(neckHeadPoint, add(mul(SCREEN_UP, 3 * s), mul(fwd, 5 * s)));
     const eyeSide = mul(side, 6.5 * s);
-    fillCircle(sub(eyeBase, eyeSide), 2 * s, COLORS.eye);
-    fillCircle(add(eyeBase, eyeSide), 2 * s, COLORS.eye);
+    fillCircle(sub(eyeBase, eyeSide), 2 * s, gooseColors.eye);
+    fillCircle(add(eyeBase, eyeSide), 2 * s, gooseColors.eye);
   }
 
   function drawHonkBubble(goose) {

@@ -558,6 +558,22 @@
         glow: "rgba(30, 215, 96, 0.28)",
       };
     }
+    if (appId === "mediaPlayer") {
+      return {
+        body: "rgba(232, 244, 255, 0.98)",
+        edge: "rgba(44, 116, 194, 0.38)",
+        text: "rgba(20, 68, 130, 0.9)",
+        glow: "rgba(88, 178, 255, 0.28)",
+      };
+    }
+    if (appId === "notepad") {
+      return {
+        body: "rgba(246, 249, 255, 0.98)",
+        edge: "rgba(92, 118, 162, 0.36)",
+        text: "rgba(34, 50, 82, 0.9)",
+        glow: "rgba(190, 214, 255, 0.24)",
+      };
+    }
     if (appId === "minesweeper") {
       return {
         body: "rgba(238, 240, 244, 0.98)",
@@ -771,6 +787,40 @@
       return;
     }
 
+    if (appId === "mediaPlayer") {
+      ctx.fillStyle = "rgba(44, 126, 206, 0.98)";
+      roundedRectPath(size * 0.2, size * 0.2, size * 0.6, size * 0.6, 10);
+      ctx.fill();
+      ctx.fillStyle = "rgba(255, 255, 255, 0.96)";
+      ctx.beginPath();
+      ctx.moveTo(size * 0.42, size * 0.34);
+      ctx.lineTo(size * 0.42, size * 0.66);
+      ctx.lineTo(size * 0.67, size * 0.5);
+      ctx.closePath();
+      ctx.fill();
+      return;
+    }
+
+    if (appId === "notepad") {
+      ctx.fillStyle = "rgba(246, 249, 255, 0.98)";
+      roundedRectPath(size * 0.24, size * 0.14, size * 0.52, size * 0.7, 5);
+      ctx.fill();
+      ctx.strokeStyle = "rgba(70, 96, 148, 0.72)";
+      ctx.lineWidth = 2;
+      roundedRectPath(size * 0.24, size * 0.14, size * 0.52, size * 0.7, 5);
+      ctx.stroke();
+      ctx.strokeStyle = "rgba(92, 130, 190, 0.52)";
+      ctx.lineWidth = 1.4;
+      for (let i = 0; i < 4; i += 1) {
+        const y = size * (0.3 + i * 0.12);
+        ctx.beginPath();
+        ctx.moveTo(size * 0.32, y);
+        ctx.lineTo(size * 0.68, y);
+        ctx.stroke();
+      }
+      return;
+    }
+
     if (appId === "internetExplorer") {
       ctx.fillStyle = "rgba(38, 150, 220, 0.98)";
       ctx.beginPath();
@@ -870,6 +920,10 @@
           ? state.paint.iconImage
         : appId === "spotify"
           ? state.spotify.iconImage
+        : appId === "mediaPlayer"
+          ? state.mediaPlayer.iconImage
+        : appId === "notepad"
+          ? state.notepad.iconImage
         : appId === "minesweeper"
           ? state.minesweeper.iconImage
         : appId === "internetExplorer"
@@ -882,7 +936,7 @@
           ? state.fist.iconImage
           : null;
     const hasLoadedIconImage = iconImage?.complete && iconImage.naturalWidth > 0;
-    const isBareImageIcon = appId === "flamethrower" || appId === "katana" || appId === "nuke" || appId === "thunder" || appId === "gauntlet" || appId === "bread" || appId === "paint" || appId === "spotify" || appId === "minesweeper" || appId === "internetExplorer" || appId === "chrome" || appId === "skype" || appId === "fist";
+    const isBareImageIcon = appId === "flamethrower" || appId === "katana" || appId === "nuke" || appId === "thunder" || appId === "gauntlet" || appId === "bread" || appId === "paint" || appId === "spotify" || appId === "mediaPlayer" || appId === "notepad" || appId === "minesweeper" || appId === "internetExplorer" || appId === "chrome" || appId === "skype" || appId === "fist";
     const drawIconBackground = !isBareImageIcon;
 
     ctx.save();
