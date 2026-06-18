@@ -154,6 +154,7 @@
     const images = {
         player: image(assets.player),
         background: image(assets.background),
+        waveRetractionSprite: image(assets.waveRetractionSprite),
         flipBoard: image(assets.flipBoard),
         flipPenguin: image(assets.flipPenguin),
         glidePenguin: image(assets.glidePenguin),

@@ -7,6 +7,22 @@
             clamp,
             constants,
         } = options;
+        const retractionRuntime = {
+            frameWidth: 132,
+            frameHeight: 44,
+            frameCount: 46,
+            width: 46,
+            duration: 1.6,
+            speed: -800,
+            opacity: 0.3,
+            laneFractions: [0.18, 0.34, 0.5, 0.66, 0.82],
+            laneCursor: 0,
+            lastTime: null,
+            nextSpawnAt: 0,
+            initialized: false,
+            viewportWidth: null,
+            viewportHeight: null,
+        };
 
         function loopedSample(values, index) {
             if (!Array.isArray(values) || !values.length || !Number.isFinite(index)) {
@@ -171,6 +187,166 @@
             ctx.restore();
         }
 
+        function randomRange(min, max) {
+            return min + Math.random() * (max - min);
+        }
+
+        function terrainYAt(x) {
+            if (!state.terrainProfile.length) return null;
+            const sampleX = clamp(Math.round(x), 0, Math.max(0, viewport.width - 1));
+            const y = state.terrainProfile[sampleX];
+            return Number.isFinite(y) ? y : null;
+        }
+
+        function maxWaveRetractions() {
+            return Math.max(22, Math.min(42, Math.floor(viewport.width / 30)));
+        }
+
+        function isFarEnoughFromOtherRetractions(candidate, items) {
+            const minX = retractionRuntime.width * 3.75;
+            const minY = candidate.height * 3.7;
+
+            return items.every((item) => {
+                const dx = candidate.x + candidate.width * 0.5 - (item.x + item.width * 0.5);
+                const dy = candidate.y - item.y;
+                return Math.hypot(dx / minX, dy / minY) >= 1;
+            });
+        }
+
+        function makeWaveRetraction(now, options, existingItems) {
+            const spawnOptions = options || {};
+            const width = retractionRuntime.width;
+            const height = width * (retractionRuntime.frameHeight / retractionRuntime.frameWidth);
+            const items = existingItems || [];
+
+            for (let attempt = 0; attempt < 28; attempt += 1) {
+                const x = spawnOptions.anywhere
+                    ? randomRange(-width * 0.1, viewport.width - width * 0.9)
+                    : randomRange(viewport.width + width * 0.25, viewport.width + width * 2.6);
+                const terrainY = terrainYAt(x + width * 0.5);
+                if (terrainY === null) continue;
+
+                const upperY = terrainY + height * 1.25;
+                const lowerY = state.groundY - height * 0.7;
+                if (lowerY <= upperY) continue;
+
+                const laneIndex = (retractionRuntime.laneCursor + attempt) % retractionRuntime.laneFractions.length;
+                const laneFraction = retractionRuntime.laneFractions[laneIndex];
+                const laneJitter = randomRange(-height * 0.75, height * 0.75);
+                const candidate = {
+                    x,
+                    y: clamp(upperY + (lowerY - upperY) * laneFraction + laneJitter, upperY, lowerY),
+                    width,
+                    height,
+                    bornAt: now - (spawnOptions.age || 0),
+                    lifespan: retractionRuntime.duration,
+                    speed: retractionRuntime.speed,
+                    opacity: retractionRuntime.opacity,
+                };
+
+                if (isFarEnoughFromOtherRetractions(candidate, items)) {
+                    retractionRuntime.laneCursor = (laneIndex + 1) % retractionRuntime.laneFractions.length;
+                    return candidate;
+                }
+            }
+
+            return null;
+        }
+
+        function seedWaveRetractions(now) {
+            if (
+                retractionRuntime.initialized &&
+                retractionRuntime.viewportWidth === viewport.width &&
+                retractionRuntime.viewportHeight === viewport.height
+            ) {
+                return;
+            }
+
+            state.waveRetractions = [];
+            retractionRuntime.viewportWidth = viewport.width;
+            retractionRuntime.viewportHeight = viewport.height;
+
+            const initialCount = Math.max(8, Math.floor(maxWaveRetractions() * 0.85));
+            for (let i = 0; i < initialCount; i += 1) {
+                const item = makeWaveRetraction(now, {
+                    anywhere: true,
+                    age: randomRange(0, retractionRuntime.duration),
+                }, state.waveRetractions);
+                if (item) state.waveRetractions.push(item);
+            }
+
+            retractionRuntime.nextSpawnAt = now + randomRange(0.03, 0.08);
+            retractionRuntime.initialized = true;
+        }
+
+        function updateWaveRetractions(now) {
+            seedWaveRetractions(now);
+
+            const items = state.waveRetractions || (state.waveRetractions = []);
+            const lastTime = retractionRuntime.lastTime === null ? now : retractionRuntime.lastTime;
+            const dt = clamp(now - lastTime, 0, 0.12);
+            retractionRuntime.lastTime = now;
+
+            for (let i = items.length - 1; i >= 0; i -= 1) {
+                const item = items[i];
+                item.x += item.speed * dt;
+
+                const age = now - item.bornAt;
+                if (age >= item.lifespan || item.x + item.width < -item.width * 0.6) {
+                    items.splice(i, 1);
+                }
+            }
+
+            const maxCount = maxWaveRetractions();
+            while (items.length < maxCount && now >= retractionRuntime.nextSpawnAt) {
+                const item = makeWaveRetraction(now, { anywhere: Math.random() < 0.55 }, items);
+                if (item) items.push(item);
+                retractionRuntime.nextSpawnAt = now + randomRange(0.04, 0.12);
+            }
+        }
+
+        function drawWaveRetractions(ctx) {
+            const image = images.waveRetractionSprite;
+            if (!image?.width || !image.height || !state.terrainProfile.length) return;
+
+            const now = performance.now() / 1000;
+            updateWaveRetractions(now);
+            ctx.save();
+
+            for (const item of state.waveRetractions) {
+                const centerX = item.x + item.width * 0.5;
+                const terrainY = terrainYAt(centerX);
+                if (terrainY === null) continue;
+
+                const age = now - item.bornAt;
+                const surfaceFade = clamp((item.y - terrainY - 6) / 32, 0, 1);
+                if (surfaceFade <= 0) continue;
+
+                const progress = clamp(age / retractionRuntime.duration, 0, 1);
+                const fadeIn = clamp(age / 0.18, 0, 1);
+                const fadeOut = clamp((item.lifespan - age) / 0.26, 0, 1);
+                const frame = Math.min(
+                    retractionRuntime.frameCount - 1,
+                    Math.floor(progress * retractionRuntime.frameCount)
+                );
+
+                ctx.globalAlpha = item.opacity * fadeIn * fadeOut * surfaceFade;
+                ctx.drawImage(
+                    image,
+                    frame * retractionRuntime.frameWidth,
+                    0,
+                    retractionRuntime.frameWidth,
+                    retractionRuntime.frameHeight,
+                    item.x,
+                    item.y - item.height * 0.5,
+                    item.width,
+                    item.height
+                );
+            }
+
+            ctx.restore();
+        }
+
         function drawWave(ctx) {
             if (state.terrainProfile.length !== viewport.width) return;
 
@@ -178,6 +354,7 @@
             traceWaveBody(ctx);
             ctx.clip();
             drawWaveTexture(ctx);
+            drawWaveRetractions(ctx);
             ctx.restore();
 
             ctx.save();
