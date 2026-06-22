@@ -11,12 +11,14 @@
   const attributionOpen = document.getElementById("attributionOpen");
   const blackHoleEffect = document.getElementById("blackHoleEffect");
 
-  const ctx = canvas ? canvas.getContext("2d") : null;
+  const ctx = canvas ? canvas.getContext("2d", { alpha: true, desynchronized: true }) : null;
   const GOOSE_MAYHEM_ACTIVE = !!stage && !!canvas && !!ctx;
 
   const ATTRIBUTION_DISMISSED_KEY = "gooseMayhem.attributionDismissed.v1";
   const motionQuery = window.matchMedia("(prefers-reduced-motion: reduce)");
-  const FIXED_DT = 1 / 120;
+  const FIXED_DT = 1 / 60;
+  const MAX_FRAME_STEPS = 4;
+  const MAX_CANVAS_DPR = motionQuery.matches ? 1 : 1.5;
   const TAU = Math.PI * 2;
   const SCREEN_UP = { x: 0, y: -1 };
   const GOOSE_COUNT = motionQuery.matches ? 24 : 60;

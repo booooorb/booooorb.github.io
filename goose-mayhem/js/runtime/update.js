@@ -24,10 +24,10 @@
     state.time += dt;
     const geeseFrozen = mediaPlayerFreezeActive();
 
-    rebuildGooseSpatialIndex();
     if (geeseFrozen) {
       preserveFrozenGooseTimers(dt, previousTime);
     } else {
+      rebuildGooseSpatialIndex();
       for (const goose of state.geese) {
         updateGooseTask(goose);
         updateMovement(goose, dt);

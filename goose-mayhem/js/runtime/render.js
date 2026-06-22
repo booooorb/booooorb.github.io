@@ -13,6 +13,9 @@
     drawSkypeCells("capturing");
 
     for (const cargo of state.cargoes) {
+      if (!cargoIntersectsRenderViewport(cargo)) {
+        continue;
+      }
       drawCargo(cargo);
     }
 
@@ -22,6 +25,20 @@
       katana.animation.drawSplitPieces();
       fist.animation.drawShards();
     }
+  }
+
+  function cargoIntersectsRenderViewport(cargo) {
+    if (!cargo.visible) {
+      return false;
+    }
+
+    const margin = Math.max(240, cargo.width * 1.5, cargo.height * 1.5);
+    return (
+      cargo.pos.x + cargo.width >= -margin
+      && cargo.pos.x <= state.width + margin
+      && cargo.pos.y + cargo.height >= -margin
+      && cargo.pos.y <= state.height + margin
+    );
   }
 
   function syncRenderGeese() {
@@ -34,10 +51,11 @@
 
   function renderGeeseLayer() {
     syncRenderGeese();
+    const geeseFrozen = mediaPlayerFreezeActive();
 
     for (const goose of state.renderGeese) {
-      drawShadow(goose);
-      drawGoose(goose);
+      drawShadow(goose, geeseFrozen);
+      drawGoose(goose, geeseFrozen);
     }
 
     let drawnHonkBubbles = 0;
@@ -90,7 +108,8 @@
     drawMinesweeperExplosions();
     drawSkypeCells("loose");
     drawSkypePops();
-    toolManager.drawCurrencyBursts();
+    // Temporarily disabled so money-burst graphics can be excluded from lag testing.
+    // toolManager.drawCurrencyBursts();
     fist.animation.drawCracks();
   }
 

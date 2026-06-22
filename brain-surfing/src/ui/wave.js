@@ -8,11 +8,15 @@
             constants,
         } = options;
         const retractionRuntime = {
-            frameWidth: 132,
-            frameHeight: 44,
-            frameCount: 46,
-            width: 46,
-            duration: 1.6,
+            frameWidth: 356,
+            frameHeight: 36,
+            frameCount: 13,
+            fullFrame: 7,
+            width: 92,
+            duration: 2.9,
+            extendDuration: 0.45,
+            holdDuration: 1,
+            retractDuration: 0.45,
             speed: -800,
             opacity: 0.3,
             laneFractions: [0.18, 0.34, 0.5, 0.66, 0.82],
@@ -22,6 +26,11 @@
             initialized: false,
             viewportWidth: null,
             viewportHeight: null,
+        };
+        const grainRuntime = {
+            canvas: null,
+            pattern: null,
+            size: 32,
         };
 
         function loopedSample(values, index) {
@@ -187,6 +196,68 @@
             ctx.restore();
         }
 
+        function ensureWaveGrainPattern(ctx) {
+            if (grainRuntime.pattern) return grainRuntime.pattern;
+
+            const canvas = document.createElement("canvas");
+            canvas.width = grainRuntime.size;
+            canvas.height = grainRuntime.size;
+
+            const grainCtx = canvas.getContext("2d");
+            grainCtx.clearRect(0, 0, canvas.width, canvas.height);
+            grainCtx.imageSmoothingEnabled = false;
+
+            const darkDots = [
+                [1, 1], [7, 1], [13, 1], [21, 1], [29, 1],
+                [4, 4], [10, 4], [18, 4], [24, 4],
+                [1, 7], [15, 7], [21, 7], [30, 7],
+                [7, 10], [13, 10], [19, 10], [27, 10],
+                [2, 13], [9, 13], [16, 13], [23, 13],
+                [5, 16], [12, 16], [20, 16], [28, 16],
+                [1, 19], [8, 19], [15, 19], [22, 19], [30, 19],
+                [4, 22], [11, 22], [18, 22], [25, 22],
+                [2, 25], [9, 25], [17, 25], [23, 25], [29, 25],
+                [6, 28], [13, 28], [20, 28], [27, 28],
+            ];
+            const lightDots = [
+                [15, 2], [26, 8], [4, 11], [30, 14],
+                [18, 18], [11, 25], [24, 30],
+            ];
+
+            grainCtx.fillStyle = "rgba(68, 39, 39, 0.24)";
+            for (const [x, y] of darkDots) {
+                grainCtx.fillRect(x, y, 1, 1);
+            }
+
+            grainCtx.fillStyle = "rgba(255, 255, 255, 0.16)";
+            for (const [x, y] of lightDots) {
+                grainCtx.fillRect(x, y, 1, 1);
+            }
+
+            grainRuntime.canvas = canvas;
+            grainRuntime.pattern = ctx.createPattern(canvas, "repeat");
+            return grainRuntime.pattern;
+        }
+
+        function drawWaveGrain(ctx) {
+            const pattern = ensureWaveGrainPattern(ctx);
+            if (!pattern) return;
+
+            const offset = ((state.eegTime || 0) * 18) % grainRuntime.size;
+
+            ctx.save();
+            ctx.globalAlpha = 1;
+            ctx.translate(-offset, offset * 0.35);
+            ctx.fillStyle = pattern;
+            ctx.fillRect(
+                offset - grainRuntime.size,
+                -offset * 0.35,
+                viewport.width + grainRuntime.size * 2,
+                viewport.height + grainRuntime.size
+            );
+            ctx.restore();
+        }
+
         function randomRange(min, max) {
             return min + Math.random() * (max - min);
         }
@@ -203,8 +274,8 @@
         }
 
         function isFarEnoughFromOtherRetractions(candidate, items) {
-            const minX = retractionRuntime.width * 3.75;
-            const minY = candidate.height * 3.7;
+            const minX = retractionRuntime.width * 5.1;
+            const minY = candidate.height * 5;
 
             return items.every((item) => {
                 const dx = candidate.x + candidate.width * 0.5 - (item.x + item.width * 0.5);
@@ -233,12 +304,15 @@
                 const laneIndex = (retractionRuntime.laneCursor + attempt) % retractionRuntime.laneFractions.length;
                 const laneFraction = retractionRuntime.laneFractions[laneIndex];
                 const laneJitter = randomRange(-height * 0.75, height * 0.75);
+                const entryDelay = spawnOptions.anywhere
+                    ? 0
+                    : Math.max(0, (x - viewport.width + width * 0.2) / Math.abs(retractionRuntime.speed));
                 const candidate = {
                     x,
                     y: clamp(upperY + (lowerY - upperY) * laneFraction + laneJitter, upperY, lowerY),
                     width,
                     height,
-                    bornAt: now - (spawnOptions.age || 0),
+                    bornAt: now + entryDelay - (spawnOptions.age || 0),
                     lifespan: retractionRuntime.duration,
                     speed: retractionRuntime.speed,
                     opacity: retractionRuntime.opacity,
@@ -322,13 +396,25 @@
                 const surfaceFade = clamp((item.y - terrainY - 6) / 32, 0, 1);
                 if (surfaceFade <= 0) continue;
 
-                const progress = clamp(age / retractionRuntime.duration, 0, 1);
                 const fadeIn = clamp(age / 0.18, 0, 1);
                 const fadeOut = clamp((item.lifespan - age) / 0.26, 0, 1);
-                const frame = Math.min(
-                    retractionRuntime.frameCount - 1,
-                    Math.floor(progress * retractionRuntime.frameCount)
+                const extendProgress = clamp(age / retractionRuntime.extendDuration, 0, 1);
+                const holdEnd = retractionRuntime.extendDuration + retractionRuntime.holdDuration;
+                const retractProgress = clamp((age - holdEnd) / retractionRuntime.retractDuration, 0, 1);
+                let frame = Math.min(
+                    retractionRuntime.fullFrame,
+                    Math.floor(extendProgress * (retractionRuntime.fullFrame + 1))
                 );
+
+                if (age >= retractionRuntime.extendDuration && age < holdEnd) {
+                    frame = retractionRuntime.fullFrame;
+                } else if (age >= holdEnd) {
+                    const retractFrameCount = retractionRuntime.frameCount - retractionRuntime.fullFrame - 1;
+                    frame = Math.min(
+                        retractionRuntime.frameCount - 1,
+                        retractionRuntime.fullFrame + 1 + Math.floor(retractProgress * retractFrameCount)
+                    );
+                }
 
                 ctx.globalAlpha = item.opacity * fadeIn * fadeOut * surfaceFade;
                 ctx.drawImage(
@@ -355,6 +441,7 @@
             ctx.clip();
             drawWaveTexture(ctx);
             drawWaveRetractions(ctx);
+            drawWaveGrain(ctx);
             ctx.restore();
 
             ctx.save();

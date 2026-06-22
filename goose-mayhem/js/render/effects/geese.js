@@ -1,7 +1,16 @@
-  function drawShadow(goose) {
+  const FROZEN_GOOSE_COLORS = {
+    bodyShadow: "#cfcfcf",
+    body: "#f7f7f7",
+    underbody: "#e4e4e4",
+    wing: "#ececec",
+    beak: "#9a9a9a",
+    feet: "#8b8b8b",
+    eye: "#111111",
+  };
+
+  function drawShadow(goose, frozen = false) {
     const s = goose.size;
     const bodyBob = Math.abs(goose.gait) * 1.25 * s;
-    const frozen = typeof mediaPlayerFreezeActive === "function" && mediaPlayerFreezeActive();
     ctx.save();
     ctx.beginPath();
     ctx.ellipse(goose.pos.x, goose.pos.y + 2 + bodyBob, 20 * s, 15 * s, 0, 0, TAU);
@@ -14,7 +23,7 @@
     ctx.restore();
   }
 
-  function drawGoose(goose) {
+  function drawGoose(goose, frozen = false) {
     const s = goose.size;
     const fwd = angleVec(goose.angle);
     const side = angleVec(goose.angle + Math.PI / 2);
@@ -27,18 +36,7 @@
     const head2EndPoint = add(goose.rig.head2EndPoint, mul(SCREEN_UP, bodyBob * 0.5));
     const tailStart = add(bodyCenter, mul(fwd, -8 * s));
     const tailEnd = add(add(bodyCenter, mul(fwd, -16 * s)), mul(SCREEN_UP, -1.8 * s));
-    const frozen = typeof mediaPlayerFreezeActive === "function" && mediaPlayerFreezeActive();
-    const gooseColors = frozen
-      ? {
-        bodyShadow: "#cfcfcf",
-        body: "#f7f7f7",
-        underbody: "#e4e4e4",
-        wing: "#ececec",
-        beak: "#9a9a9a",
-        feet: "#8b8b8b",
-        eye: "#111111",
-      }
-      : COLORS;
+    const gooseColors = frozen ? FROZEN_GOOSE_COLORS : COLORS;
 
     const strokeLine = (from, to, width, color) => {
       ctx.beginPath();

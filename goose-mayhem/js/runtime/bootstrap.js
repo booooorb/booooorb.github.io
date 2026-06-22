@@ -1,9 +1,14 @@
   function loop(timestamp) {
     state.acc += Math.min(0.1, (timestamp - state.last) / 1000);
     state.last = timestamp;
-    while (state.acc >= FIXED_DT) {
+    let steps = 0;
+    while (state.acc >= FIXED_DT && steps < MAX_FRAME_STEPS) {
       tick(FIXED_DT);
       state.acc -= FIXED_DT;
+      steps += 1;
+    }
+    if (state.acc >= FIXED_DT) {
+      state.acc = 0;
     }
     render();
     requestAnimationFrame(loop);
@@ -21,7 +26,7 @@
     const rect = stage.getBoundingClientRect();
     state.width = rect.width;
     state.height = rect.height;
-    state.dpr = clamp(window.devicePixelRatio || 1, 1, 2);
+    state.dpr = clamp(window.devicePixelRatio || 1, 1, MAX_CANVAS_DPR);
     canvas.width = Math.round(rect.width * state.dpr);
     canvas.height = Math.round(rect.height * state.dpr);
 

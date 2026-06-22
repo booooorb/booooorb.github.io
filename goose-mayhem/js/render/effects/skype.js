@@ -25,9 +25,6 @@
       ctx.globalAlpha = alpha * (cell.cargoId ? 0.42 : 0.86);
       ctx.shadowColor = cell.cargoId ? "rgba(103, 232, 255, 0.68)" : "rgba(54, 186, 235, 0.46)";
       ctx.shadowBlur = cell.cargoId ? 18 : 12;
-      if (cell.cargoId) {
-        ctx.filter = `hue-rotate(${10 + capturePulse * 12}deg) saturate(1.18) brightness(1.08)`;
-      }
       if (image?.complete && image.naturalWidth > 0) {
         ctx.drawImage(image, -width * 0.5, -height * 0.5, width, height);
       } else {
@@ -41,7 +38,11 @@
         ctx.fill();
       }
       if (cell.cargoId) {
-        ctx.filter = "none";
+        ctx.globalCompositeOperation = "screen";
+        ctx.fillStyle = `rgba(134, 226, 255, ${0.08 + capturePulse * 0.04})`;
+        ctx.beginPath();
+        ctx.ellipse(0, 0, width * 0.46, height * 0.42, 0, 0, TAU);
+        ctx.fill();
       }
       ctx.restore();
     }

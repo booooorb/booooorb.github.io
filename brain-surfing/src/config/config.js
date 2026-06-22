@@ -7,7 +7,7 @@
         assets: Object.freeze({
             player: `${IMAGE_BASE}/character2.png`,
             background: `${IMAGE_BASE}/background_sky_2.png`,
-            waveRetractionSprite: `${IMAGE_BASE}/wave_retraction_sprite.png`,
+            waveRetractionSprite: `${IMAGE_BASE}/wave_retraction_long_sprite.png`,
             flipBoard: `${IMAGE_BASE}/flip1_p.png`,
             flipPenguin: `${IMAGE_BASE}/flip1_b.png`,
             glidePenguin: `${IMAGE_BASE}/glide_p.png`,
