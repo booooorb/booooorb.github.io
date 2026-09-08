@@ -1,0 +1,114 @@
+:root {
+  --bg: #EAE7D9;        /* page background */
+  --card-bg: #EAE7D9;   /* default card background (same family) */
+  --card-hover: #D2C6B2;
+  --border: #442727;
+  --fg: #442727;        /* main text */
+  --muted: #6C5A4A;     /* softer text, still in the brown family */
+}
+
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
+}
+
+html,
+body {
+  margin: 0;
+  padding: 0;
+  height: 100%;
+  font-family: "Courier New", ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas,
+    "Liberation Mono", "Courier", monospace;
+  background: var(--bg);      /* solid */
+  color: var(--fg);
+}
+
+body {
+  display: flex;
+  justify-content: center;
+}
+
+.site {
+  width: 100%;
+  max-width: 960px;
+  padding: 24px 16px 40px;
+}
+
+/* Header */
+.site-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 32px;
+}
+
+.logo {
+  font-weight: 700;
+  font-size: 1.2rem;
+}
+
+/* Game cards grid */
+.games-grid {
+  margin-top: 28px;
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(280px, 440px));
+  justify-content: center;
+  gap: 24px;
+}
+
+/* Game buttons / boxes */
+.game-card {
+  position: relative;
+  display: block;
+  overflow: hidden;
+  padding: 22px 22px;
+  border-radius: 20px;
+  background: var(--card-bg);
+  border: 3px solid var(--border);   /* slightly thicker border */
+  text-decoration: none;
+  color: var(--fg);                  /* #442727 text */
+  min-height: 150px;
+  isolation: isolate;
+  transition:
+    transform 0.1s ease,
+    box-shadow 0.1s ease,
+    background-color 0.1s ease,
+    border-color 0.1s ease;
+}
+
+.game-card-image {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  opacity: 1;
+  transition: transform 0.1s ease;
+}
+
+.game-card-content {
+  position: relative;
+  z-index: 1;
+}
+
+.game-card:hover {
+  transform: translateY(-2px);
+  background-color: var(--card-hover);  /* #D2C6B2 on hover */
+  border-color: var(--border);          /* keep same border color */
+  box-shadow: 6px 6px 0 var(--border);
+}
+
+.game-card:hover .game-card-image {
+  transform: scale(1.03);
+}
+
+.game-title {
+  font-weight: 700;
+  margin-bottom: 6px;
+}
+
+.game-subtitle {
+  font-size: 0.9rem;
+  color: var(--muted);
+}

@@ -2,60 +2,159 @@
 <html lang="en">
 <head>
   <meta charset="utf-8" />
-  <title>booooorb</title>
   <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <meta name="theme-color" content="#000000" />
+  <meta name="description" content="Browser games, software experiments, and projects by JY. Build, analyze, iterate." />
+  <title>JY — projects</title>
+  <link rel="icon" href="assets/menu/monogram.svg" type="image/svg+xml" />
+  <link rel="preload" href="assets/menu/fonts/ibm-plex-mono-regular.ttf" as="font" type="font/ttf" crossorigin />
+  <link rel="preload" href="assets/menu/fonts/ibm-plex-mono-semibold.ttf" as="font" type="font/ttf" crossorigin />
   <link rel="stylesheet" href="style.css" />
+  <script src="menu.js" defer></script>
 </head>
 <body>
+  <a class="skip-link" href="#projects">skip to projects</a>
   <div class="site">
-    <header class="site-header">
-      <div class="logo">booooorb</div>
-    </header>
+    <aside class="sidebar" aria-label="Profile and contact">
+      <section class="profile-panel">
+        <h1 class="monogram"><img src="assets/menu/monogram.svg" width="68" height="54" alt="JY" /></h1>
+        <div class="mascot-stage"><img class="mascot" src="assets/menu/rat.webp" width="190" height="115" alt="A white halftone rat" /></div>
+      </section>
+      <section class="contact-panel" aria-labelledby="contact-title">
+        <h2 id="contact-title">CONTACT</h2>
+        <p class="profile-copy">
+          <a href="mailto:jeffreyyijianyang2005@gmail.com"><img class="contact-icon" src="assets/menu/contact-mail.svg" width="16" height="16" alt="" /><span>jeffreyyijianyang2005<wbr>@gmail.com</span></a>
+          <a href="tel:+16044414411"><img class="contact-icon" src="assets/menu/contact-phone.svg" width="16" height="16" alt="" /><span>604-441-4411</span></a>
+        </p>
+      </section>
+    </aside>
 
-    <main class="games-grid">
-      <a class="game-card has-image" href="brain-surfing/">
-        <img
-          class="game-card-image"
-          src="assets/button-images/brain-surfing.png"
-          alt=""
-          aria-hidden="true"
-        />
-        <div class="game-card-content">
+    <main class="main-content" id="projects" tabindex="-1">
+      <header class="project-header">
+        <div class="toolbar">
+          <form class="search" role="search">
+            <svg width="25" height="25" viewBox="0 0 25 25" fill="none" aria-hidden="true"><circle cx="10.5" cy="10.5" r="7.5" /><path d="m16 16 7 7" /></svg>
+            <label class="sr-only" for="project-search">Search projects</label>
+            <input id="project-search" type="search" name="search" placeholder="SEARCH" autocomplete="off" spellcheck="false" />
+          </form>
+          <div class="view-controls" aria-label="Project view">
+            <button type="button" data-view="grid" aria-pressed="true">GRID</button>
+            <button type="button" data-view="list" aria-pressed="false">LIST</button>
+          </div>
+          <div class="filter-control">
+            <button class="filter-toggle" id="filter-toggle" type="button" aria-expanded="false" aria-controls="filter-panel">
+              <svg width="23" height="23" viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M3 7h16m-3-3 3 3-3 3M21 17H5m3-3-3 3 3 3" /></svg>
+              <span>filter</span>
+            </button>
+            <div class="filter-panel" id="filter-panel" hidden>
+              <div class="collection-controls" aria-label="Project selection">
+                <button type="button" data-selection="all" aria-pressed="true">all</button>
+                <button type="button" data-selection="featured" aria-pressed="false">featured</button>
+              </div>
+              <label for="status-filter">show</label>
+              <select id="status-filter"><option value="all">all projects</option><option value="available">available projects</option><option value="placeholder">coming soon</option></select>
+              <label for="sort-order">sort by</label>
+              <select id="sort-order"><option value="default">original order</option><option value="name">name: a–z</option></select>
+              <button type="button" class="text-button" id="reset-filters">reset filters</button>
+            </div>
+          </div>
         </div>
-      </a>
+        <nav class="categories" aria-label="Project tags">
+          <button type="button" data-category="all" aria-pressed="true">ALL</button>
+          <button type="button" data-category="interactive" aria-pressed="false">INTERACTIVE</button>
+          <button type="button" data-category="software" aria-pressed="false">SOFTWARE</button>
+          <button type="button" data-category="research" aria-pressed="false">RESEARCH</button>
+          <button type="button" data-category="web" aria-pressed="false">WEB</button>
+          <button type="button" data-category="machine-learning" aria-pressed="false" aria-label="Machine learning">ML</button>
+        </nav>
+      </header>
 
-      <a class="game-card has-image" href="stroop-typing/">
-        <img
-          class="game-card-image"
-          src="assets/button-images/stroop-typing.png"
-          alt=""
-          aria-hidden="true"
-        />
-        <div class="game-card-content">
-        </div>
-      </a>
+      <!-- Add future projects here. Use a real href only when a project is available. -->
+      <section class="project-results" aria-label="Projects">
+      <div class="projects-grid" id="project-grid" data-layout="grid">
+        <a class="project-card" href="brain-surfing/" data-title="Brainwave Surfing" data-categories="interactive web" data-tags="interactive web" data-status="available" data-featured="true">
+          <div class="project-media artwork-brain"><img src="assets/button-images/brain-surfing.png" width="900" height="420" alt="" /><span class="project-badge"><span class="sr-only">Made in </span>2026</span></div>
+          <div class="project-caption"><h2>Brainwave Surfing</h2><p class="project-tagline">INTERACTIVE · WEB</p></div>
+        </a>
+        <a class="project-card" href="stroop-typing/" data-title="Strooptype" data-categories="interactive web" data-tags="interactive web" data-status="available" data-featured="true">
+          <div class="project-media artwork-stroop"><img src="assets/button-images/stroop-typing.png" width="900" height="420" alt="" /><span class="project-badge"><span class="sr-only">Made in </span>2026</span></div>
+          <div class="project-caption"><h2>Strooptype</h2><p class="project-tagline">INTERACTIVE · WEB</p></div>
+        </a>
+        <a class="project-card" href="goose-mayhem/" data-title="Desktop Goose Mayhem" data-categories="interactive web" data-tags="interactive web" data-status="available" data-featured="true">
+          <div class="project-media"><img src="assets/menu/goose-mayhem.webp" width="1000" height="760" alt="" /><span class="project-badge"><span class="sr-only">Made in </span>2026</span></div>
+          <div class="project-caption"><h2>Desktop Goose Mayhem</h2><p class="project-tagline">INTERACTIVE · WEB</p></div>
+        </a>
+        <a class="project-card" href="bw2-trainer-class-music-editor/" data-title="BW2 Trainer Class Music Editor" data-categories="software" data-tags="software" data-status="available">
+          <div class="project-media link-preview"><span class="link-arrow" aria-hidden="true">↗</span><span class="link-name" aria-hidden="true">BW2</span><span class="link-host" aria-hidden="true">github.com/booooorb</span><span class="project-badge"><span class="sr-only">Made in </span>2025</span></div>
+          <div class="project-caption"><h2>BW2 Trainer Class Music Editor</h2><p class="project-tagline">SOFTWARE</p></div>
+        </a>
+        <a class="project-card" href="woo-display/" data-title="WooDisplay" data-categories="software" data-tags="software" data-status="available">
+          <div class="project-media link-preview"><span class="link-arrow" aria-hidden="true">↗</span><span class="link-name" aria-hidden="true">WooDisplay</span><span class="link-host" aria-hidden="true">github.com/booooorb</span><span class="project-badge"><span class="sr-only">Made in </span>2026</span></div>
+          <div class="project-caption"><h2>WooDisplay</h2><p class="project-tagline">SOFTWARE</p></div>
+        </a>
+        <a class="project-card" href="gf-football/" data-title="GFFootball" data-categories="interactive web" data-tags="interactive web" data-status="available">
+          <div class="project-media link-preview"><span class="link-arrow" aria-hidden="true">↗</span><span class="link-name" aria-hidden="true">GFFootball</span><span class="link-host" aria-hidden="true">github.com/booooorb</span><span class="project-badge"><span class="sr-only">Made in </span>2026</span></div>
+          <div class="project-caption"><h2>GFFootball</h2><p class="project-tagline">INTERACTIVE · WEB</p></div>
+        </a>
+        <a class="project-card" href="dlc-gait-assembler/" data-title="DLC Gait Assembler" data-categories="software research machine-learning" data-tags="software research machine-learning" data-status="available">
+          <div class="project-media link-preview"><span class="link-arrow" aria-hidden="true">↗</span><span class="link-name" aria-hidden="true">DLC</span><span class="link-host" aria-hidden="true">github.com/booooorb</span><span class="project-badge"><span class="sr-only">Made in </span>2026</span></div>
+          <div class="project-caption"><h2>DLC Gait Assembler</h2><p class="project-tagline">SOFTWARE · RESEARCH · ML</p></div>
+        </a>
+        <a class="project-card" href="myoassist-lumbar-flexion-model/" data-title="28 Muscle MyoAssist Lumbar Model" data-categories="research" data-tags="research" data-status="available">
+          <div class="project-media link-preview"><span class="link-arrow" aria-hidden="true">↗</span><span class="link-name" aria-hidden="true">MyoAssist</span><span class="link-host" aria-hidden="true">github.com/booooorb</span><span class="project-badge"><span class="sr-only">Made in </span>2026</span></div>
+          <div class="project-caption"><h2>28 Muscle MyoAssist Lumbar Model</h2><p class="project-tagline">RESEARCH</p></div>
+        </a>
+        <a class="project-card" href="sbl-annotator/" data-title="SBL Annotator" data-categories="software research" data-tags="software research" data-status="available">
+          <div class="project-media link-preview"><span class="link-arrow" aria-hidden="true">↗</span><span class="link-name" aria-hidden="true">SBL</span><span class="link-host" aria-hidden="true">github.com/booooorb</span><span class="project-badge"><span class="sr-only">Made in </span>2026</span></div>
+          <div class="project-caption"><h2>SBL Annotator</h2><p class="project-tagline">SOFTWARE · RESEARCH</p></div>
+        </a>
+        <a class="project-card" href="field-activity-detector/" data-title="Field Activity Detector" data-categories="web machine-learning" data-tags="web machine-learning" data-status="available">
+          <div class="project-media link-preview"><span class="link-arrow" aria-hidden="true">↗</span><span class="link-name" aria-hidden="true">Field Activity</span><span class="link-host" aria-hidden="true">github.com/booooorb</span><span class="project-badge"><span class="sr-only">Made in </span>2026</span></div>
+          <div class="project-caption"><h2>Field Activity Detector</h2><p class="project-tagline">WEB · ML</p></div>
+        </a>
+        <a class="project-card" href="veryshop/" data-title="veryshop.ca" data-categories="web" data-tags="web" data-status="available">
+          <div class="project-media link-preview"><span class="link-arrow" aria-hidden="true">↗</span><span class="link-name" aria-hidden="true">veryshop.ca</span><span class="link-host" aria-hidden="true">veryshop.ca</span><span class="project-badge"><span class="sr-only">Made in </span>2025</span></div>
+          <div class="project-caption"><h2>veryshop.ca</h2><p class="project-tagline">WEB</p></div>
+        </a>
+        <button type="button" class="project-card ideas-card" data-title="Ideas" data-categories="" data-tags="" data-status="placeholder" data-description="Room for the next idea. More projects will appear here.">
+          <div class="project-media ideas-preview"><span class="plus" aria-hidden="true">+</span><span>more to come...</span></div>
+          <div class="project-caption"><h2>Ideas</h2><p class="project-tagline">—</p></div>
+        </button>
+      </div>
+      <div class="empty-state" id="empty-state" hidden><p>no projects found.</p><button type="button" class="outline-button" id="clear-search">clear filters</button></div>
+      </section>
+      <p class="sr-only" id="results-announcement" role="status" aria-live="polite" aria-atomic="true"></p>
+      <noscript><p class="noscript-note">All projects are shown. Search and view controls require JavaScript. The game links work directly; the <a href="legacy/">legacy menu</a> is also available.</p></noscript>
 
-      <a class="game-card has-image" href="ml-visualized/">
-        <img
-          class="game-card-image"
-          src="assets/button-images/ml-visualized.png"
-          alt=""
-          aria-hidden="true"
-        />
-        <div class="game-card-content">
-          <div class="game-title">TBD</div>
-          <div class="game-subtitle">TBD</div>
+      <footer class="site-footer">
+        <div class="footer-top">
+          <nav class="footer-nav" aria-label="Main navigation">
+            <button type="button" data-info="about">About</button>
+            <button type="button" data-info="resume">Resume</button>
+            <a href="https://github.com/booooorb" target="_blank" rel="noopener noreferrer">Github</a>
+            <button type="button" data-info="cv">CV</button>
+          </nav>
+          <div class="footer-actions">
+            <nav class="pagination" aria-label="Project pages" hidden>
+              <span class="page-label">page</span>
+              <button type="button" id="previous-page" aria-label="Previous page" aria-controls="project-grid" disabled>←</button>
+              <span class="page-numbers" id="page-numbers"></span>
+              <button type="button" id="next-page" aria-label="Next page" aria-controls="project-grid">→</button>
+            </nav>
+            <p class="item-count" id="item-count">12 items</p>
+          </div>
         </div>
-      </a>
-
-      <a class="game-card" href="goose-mayhem/index.html">
-        <div class="game-card-content">
-          <div class="game-title">Desktop Goose Mayhem</div>
-          <div class="game-subtitle">A screen full of browser geese</div>
-        </div>
-      </a>
-      <!-- add more games here later -->
+        <div class="footer-bottom"><p>© 2026 JY. all rights reserved. <a class="legacy-link" href="legacy/">legacy</a></p><p>software <span>·</span> research <span>·</span> rodents <span>·</span> and more</p></div>
+      </footer>
     </main>
   </div>
+
+  <dialog class="info-dialog" id="info-dialog" aria-labelledby="dialog-title" aria-describedby="dialog-description">
+    <form method="dialog"><button class="dialog-close" aria-label="Close dialog">×</button></form>
+    <p class="dialog-eyebrow" id="dialog-eyebrow">PROJECTS</p>
+    <h2 id="dialog-title"></h2>
+    <p id="dialog-description"></p>
+    <a class="outline-button" id="dialog-link" href="https://github.com/booooorb" target="_blank" rel="noopener noreferrer" hidden></a>
+  </dialog>
 </body>
 </html>

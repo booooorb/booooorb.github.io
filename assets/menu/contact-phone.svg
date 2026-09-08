@@ -1,0 +1,9 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24">
+  <defs>
+    <mask id="grain">
+      <path fill="white" d="M0 0h24v24H0z"/>
+      <path fill="black" d="M5 3h1v1H5zM7 6h1v1H7zM3 8h1v1H3zM5 12h1v1H5zM8 14h1v1H8zM10 17h1v1h-1zM14 18h1v1h-1zM17 16h1v1h-1zM19 19h1v1h-1zM15 21h1v1h-1z"/>
+    </mask>
+  </defs>
+  <path fill="#efefed" mask="url(#grain)" d="M4 2h4l3 6-3 3c1 2 3 4 5 5l3-3 6 3v4l-2 2C10 22 2 14 2 4z"/>
+</svg>
