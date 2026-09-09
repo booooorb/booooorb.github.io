@@ -370,11 +370,14 @@ p, h1, h2 { margin: 0; }
   .projects-grid[data-layout="list"] .project-caption p { line-height: 10px; }
 }
 
-/* Phone portrait: menu links on the left, paging and count on the right. */
-@media (max-width: 700px) and (orientation: portrait) {
-  .footer-top { grid-template-columns: minmax(0, 1fr) auto; align-items: start; justify-content: stretch; column-gap: 16px; }
+/* Match the stacked layouts above, including narrow windows and tablet widths. */
+@media (max-width: 700px) and (min-height: 451px), (min-width: 701px) and (max-width: 1000px) and (min-height: 600px) {
+  .footer-top { display: grid; grid-template-columns: minmax(0, 1fr) auto; align-items: start; justify-content: stretch; column-gap: 16px; }
   .footer-nav { min-width: 0; flex-wrap: wrap; justify-content: flex-start; gap: 6px 12px; }
   .footer-actions { flex-direction: column; align-items: flex-end; justify-content: flex-start; gap: 6px; }
+  .footer-bottom { flex-direction: row; flex-wrap: nowrap; align-items: baseline; gap: 8px; font-size: clamp(7px, 2vw, 8px); }
+  .footer-bottom > p { flex-shrink: 0; white-space: nowrap; }
+  .footer-links { flex-shrink: 0; gap: 8px; }
 }
 
 /* All links stay accessible as an ordinary flowing page when JavaScript is off. */

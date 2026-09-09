@@ -1,0 +1,4 @@
+.dialog-preview { position: relative; }
+/* The original image still supplies layout, accessible text, and a fallback. */
+.project-media img.dither-ready, .dialog-preview img.dither-ready { opacity: 0; }
+.preview-dither { position: absolute; display: block; pointer-events: none; }

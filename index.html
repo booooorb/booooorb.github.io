@@ -10,7 +10,9 @@
   <link rel="preload" href="assets/menu/fonts/ibm-plex-mono-regular.ttf" as="font" type="font/ttf" crossorigin />
   <link rel="preload" href="assets/menu/fonts/ibm-plex-mono-semibold.ttf" as="font" type="font/ttf" crossorigin />
   <link rel="stylesheet" href="style.css" />
+  <link rel="stylesheet" href="assets/dither/preview.css" />
   <script src="menu.js" defer></script>
+  <script type="module" src="assets/dither/site.js"></script>
 </head>
 <body>
   <a class="skip-link" href="#projects">skip to projects</a>
@@ -131,6 +133,8 @@
             <button type="button" data-info="resume">Resume</button>
             <button type="button" data-info="github">Github</button>
             <button type="button" data-info="cv">CV</button>
+            <!-- Temporary experiment: remove this link and dither-lab/ when finished. -->
+            <a href="dither-lab/" aria-label="Dither lab (temporary)">Dither lab</a>
           </nav>
           <div class="footer-actions">
             <nav class="pagination" aria-label="Project pages" hidden>

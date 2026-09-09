@@ -1,0 +1,99 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <meta name="theme-color" content="#000000" />
+  <meta name="robots" content="noindex, nofollow" />
+  <title>Dither lab — Desktop Goose</title>
+  <link rel="icon" href="../assets/menu/monogram.svg" type="image/svg+xml" />
+  <link rel="stylesheet" href="../style.css" />
+  <link rel="stylesheet" href="lab.css" />
+  <script type="module" src="lab.js"></script>
+</head>
+<body class="dither-lab">
+  <a class="skip-link" href="#editor">Skip to dither controls</a>
+  <main class="lab-shell">
+    <header class="lab-header">
+      <a class="back-link" href="../">← Back to projects</a>
+      <span class="eyebrow">TEMPORARY EXPERIMENT</span>
+    </header>
+
+    <section aria-labelledby="lab-title">
+      <div class="intro">
+        <div><p class="eyebrow">DESKTOP GOOSE / PRINT STUDIES</p><h1 id="lab-title">Dither lab</h1></div>
+        <p class="intro-copy">Fine grain. Full detail.<br>Two grayscale prints, four color washes.<br>Select a print to make it your own.</p>
+      </div>
+      <div class="section-heading"><h2>01—06 / Starting points</h2><span id="source-size">Loading original…</span></div>
+      <p class="lab-status" id="load-status" role="status">Preparing six full-resolution previews…</p>
+      <noscript><p class="error-message">Enable JavaScript to generate the six prints and use the live dither controls.</p></noscript>
+      <div class="preset-grid" id="preset-grid" aria-label="Six dither presets"></div>
+    </section>
+
+    <section class="editor" id="editor" aria-labelledby="editor-title" aria-busy="true">
+      <div class="section-heading editor-heading"><h2 id="editor-title" tabindex="-1">Adjust your print</h2><span id="selection-name">01 / Newsprint · fine</span></div>
+      <div class="editor-layout">
+        <div class="preview-column">
+          <div class="preview-toolbar">
+            <div class="view-toggle" role="group" aria-label="Preview size">
+              <button type="button" id="fit-view" aria-pressed="true">Fit</button>
+              <button type="button" id="actual-view" aria-pressed="false">100%</button>
+            </div>
+            <label class="compare-toggle"><input type="checkbox" id="show-original" /> Show original</label>
+          </div>
+          <div class="preview-viewport" id="preview-viewport">
+            <div class="preview-stage" id="preview-stage">
+              <img id="original-image" src="../assets/menu/goose-mayhem.webp" width="800" height="608" alt="Original Desktop Goose screenshot with white geese on a blue sky and green hill" />
+              <canvas id="live-preview" width="800" height="608" role="img" aria-label="Desktop Goose with the selected dither settings" hidden></canvas>
+            </div>
+          </div>
+          <div class="preview-caption"><span id="preview-label">Dithered preview</span><span id="render-status" role="status">Loading…</span></div>
+          <p class="preview-note">Use 100% to inspect individual dots. Fit scales the view; your PNG keeps every pixel of the source.</p>
+        </div>
+
+        <form class="controls" id="controls">
+          <fieldset id="settings" disabled>
+            <legend class="sr-only">Dither settings</legend>
+            <div class="control-group">
+              <label for="algorithm">Dither pattern</label>
+              <select id="algorithm" name="algorithm"><option value="diffusion">Fine stipple / error diffusion</option><option value="ordered">Ordered / newspaper screen</option></select>
+            </div>
+            <div class="control-group">
+              <div class="control-label"><label for="grain">Grain size</label><output for="grain" id="grain-output">1 px</output></div>
+              <input id="grain" name="grain" type="range" min="1" max="3" step="1" value="1" aria-describedby="grain-help" />
+              <p id="grain-help">1 source pixel is the finest setting.</p>
+            </div>
+            <div class="control-group">
+              <div class="control-label"><label for="strength">Dither strength</label><output for="strength" id="strength-output">100%</output></div>
+              <input id="strength" name="strength" type="range" min="0" max="100" step="1" value="100" />
+            </div>
+            <div class="control-group">
+              <div class="control-label"><label for="color">Color wash</label><output for="color" id="color-output">0%</output></div>
+              <input id="color" name="color" type="range" min="0" max="65" step="1" value="0" aria-describedby="color-help" />
+              <p id="color-help">From grayscale to diluted original color.</p>
+            </div>
+            <div class="control-group">
+              <div class="control-label"><label for="contrast">Contrast</label><output for="contrast" id="contrast-output">100%</output></div>
+              <input id="contrast" name="contrast" type="range" min="70" max="140" step="1" value="100" />
+            </div>
+            <div class="control-group">
+              <div class="control-label"><label for="brightness">Brightness</label><output for="brightness" id="brightness-output">0</output></div>
+              <input id="brightness" name="brightness" type="range" min="-20" max="20" step="1" value="0" />
+            </div>
+            <div class="control-group">
+              <label for="levels">Ink tones</label>
+              <select id="levels" name="levels"><option value="2">2 / black + white</option><option value="3">3 / softer grayscale</option><option value="4">4 / more tonal detail</option></select>
+            </div>
+            <div class="control-actions">
+              <button class="lab-button primary-button" type="button" id="download-png">Download PNG ↓</button>
+              <button class="lab-button" type="button" id="reset-preset">Reset this preset ↺</button>
+            </div>
+          </fieldset>
+          <p class="saved-note" id="saved-note">Your adjustments are saved in this browser.</p>
+        </form>
+      </div>
+    </section>
+    <footer class="lab-footer"><p>Desktop Goose Mayhem / dither studies</p><a href="../">Back to projects ↗</a></footer>
+  </main>
+</body>
+</html>

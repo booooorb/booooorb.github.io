@@ -88,6 +88,45 @@ Only **Download** requests the document, saving it as `JY-Resume.pdf` or
 
 ## Homepage behavior
 
+### Temporary dither lab
+
+The **Dither lab** link next to **CV** opens `dither-lab/`. It shows six
+Desktop Goose print presets: two grayscale dithers, then 12%, 24%, 38%, and
+55% color washes. Select a print to adjust its grain, dither strength, color,
+contrast, brightness, pattern, and ink tones. **Show original** compares the
+unprocessed image; **100%** displays one source pixel per CSS pixel.
+
+Processing runs in a web worker using the original 800 × 608 screenshot.
+All presets start with one-pixel grain. Display previews use high-quality
+downscaling to avoid moiré; PNG downloads use the full-resolution master.
+Adjustments are saved locally and separately for each preset; **Reset this
+preset** restores its starting settings. Lab adjustments do not change the
+shared homepage preset.
+To remove the experiment, delete `dither-lab/` and its marked link in
+`index.html`. No build step, packages, or external services are needed.
+
+### Automatic preview dithering
+
+Project thumbnail images and images in the detail dialogs automatically use
+the shared preset in `assets/dither/site-preset.js`: ordered newspaper screen,
+1 source-pixel grain, 100% dither strength, 15% color wash, 100% contrast,
+brightness +1, and two ink tones (black and white).
+
+Add images inside `.project-media` or `.dialog-preview` as usual; no per-image
+filter class or generated asset is needed. Newly inserted images, source
+changes, cloned dialog previews, and responsive sizes are handled automatically.
+Use local preview assets or images served with appropriate CORS permission;
+an unreadable image falls back to the original.
+
+The original image files and their dimensions stay intact. Dithering runs in a
+worker at native resolution, with pixel-area averaging for smaller displays.
+The original `<img>` supplies accessible text and layout. Text placeholders,
+navigation icons, and the already-dithered sidebar mascot keep their existing
+appearance. Production filtering lives in `assets/dither/` and continues to
+work if the temporary lab is removed.
+
+### Menu controls
+
 Menu interactions are handled by `menu.js`. Without JavaScript, all project
 links remain available in an ordinary scrolling page. Fonts and menu artwork
 are served locally. The sidebar has a continuously walking mouse animation

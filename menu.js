@@ -327,6 +327,8 @@
     if (media) {
       const artwork = media.cloneNode(true);
       artwork.querySelectorAll(".project-badge").forEach((badge) => badge.remove());
+      artwork.querySelectorAll(".preview-dither").forEach((canvas) => canvas.remove());
+      artwork.querySelectorAll(".dither-ready").forEach((image) => image.classList.remove("dither-ready"));
       const thumbnail = artwork.querySelector("img");
       if (thumbnail) thumbnail.alt = `${title} preview`;
       else { artwork.setAttribute("role", "img"); artwork.setAttribute("aria-label", `${title} preview`); }
