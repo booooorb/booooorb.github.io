@@ -3,12 +3,10 @@ export const DURATION_SEC = 30;
 export const MODES = {
   congruent: {
     key: "congruent",
-    label: "word = color",
-    helper: "match",
+    helper: "Type the ink color. Let the word help you.",
   },
   incongruent: {
     key: "incongruent",
-    label: "word != color",
-    helper: "ignore the word",
+    helper: "Trust your eyes. Type the ink color, not the word.",
   },
 };

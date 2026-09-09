@@ -88,7 +88,7 @@ function makeCracks() {
   });
 }
 
-export function createArena(canvas, sound) {
+export function createArena(canvas, sound, anchor) {
   if (!canvas) {
     return {
       spawnBall() {},
@@ -111,6 +111,9 @@ export function createArena(canvas, sound) {
 
   const ctx = canvas.getContext("2d");
   const balls = [];
+  const reducedMotion = window.matchMedia("(prefers-reduced-motion: reduce)");
+  let reducedNeedsDraw = true;
+  reducedMotion.addEventListener("change", () => { reducedNeedsDraw = true; });
 
   const shatter = {
     active: false,
@@ -132,22 +135,53 @@ export function createArena(canvas, sound) {
     return shatter.active && shatter.released;
   }
 
+  function syncAnchor() {
+    if (shatter.active || !anchor) return;
+    const slot = anchor.getBoundingClientRect();
+    const viewport = canvas.getBoundingClientRect();
+    const nextX = slot.left + slot.width / 2 - viewport.left;
+    const nextY = slot.top + slot.height / 2 - viewport.top;
+    const nextRadius = Math.min(82, Math.min(slot.width, slot.height) * 0.42);
+    const dx = nextX - centerX;
+    const dy = nextY - centerY;
+    if (!dx && !dy && nextRadius === radius) return;
+
+    centerX = nextX;
+    centerY = nextY;
+    radius = nextRadius;
+    for (const ball of balls) {
+      ball.x += dx;
+      ball.y += dy;
+    }
+    reducedNeedsDraw = true;
+  }
+
   function resize() {
-    const rect = canvas.getBoundingClientRect();
-    width = Math.max(1, Math.floor(rect.width));
-    height = Math.max(1, Math.floor(rect.height));
+    reducedNeedsDraw = true;
+    const viewport = window.visualViewport;
+    width = Math.max(1, Math.round(viewport?.width ?? document.documentElement.clientWidth));
+    height = Math.max(1, Math.round(viewport?.height ?? window.innerHeight));
+    canvas.style.left = `${viewport?.offsetLeft ?? 0}px`;
+    canvas.style.top = `${viewport?.offsetTop ?? 0}px`;
+    canvas.style.width = `${width}px`;
+    canvas.style.height = `${height}px`;
 
     dpr = Math.max(1, Math.floor(window.devicePixelRatio || 1));
     canvas.width = width * dpr;
     canvas.height = height * dpr;
     ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
 
-    centerX = width / 2;
-    centerY = height * 0.73;
-    radius = Math.min(138, Math.min(width, height) * 0.18);
+    syncAnchor();
+
+    // Only released balls use the window bounds; the collection follows its layout slot.
+    if (useWindowBounds()) {
+      for (const ball of balls) confineToViewport(ball);
+    }
   }
 
   function reset() {
+    reducedNeedsDraw = true;
+    canvas.classList.remove("is-released");
     if (dragState?.ball) {
       dragState.ball.isDragging = false;
     }
@@ -157,15 +191,18 @@ export function createArena(canvas, sound) {
     shatter.released = false;
     shatter.startedAt = 0;
     shatter.cracks = [];
+    syncAnchor();
   }
 
   function spawnBall(colorHex) {
+    reducedNeedsDraw = true;
+    syncAnchor();
     while (balls.length >= MAX_BALLS) {
       balls.shift();
     }
 
     const angle = randomBetween(0, Math.PI * 2);
-    const spawnRadius = randomBetween(0, Math.max(1, radius * 0.16));
+    const spawnRadius = randomBetween(0, Math.max(1, radius * (reducedMotion.matches ? 0.7 : 0.16)));
     const speed = randomBetween(100, 140);
 
     balls.push({
@@ -173,7 +210,7 @@ export function createArena(canvas, sound) {
       y: centerY + Math.sin(angle) * spawnRadius,
       vx: Math.cos(angle + Math.PI / 2) * speed,
       vy: Math.sin(angle + Math.PI / 2) * speed - randomBetween(90, 130),
-      r: randomBetween(9, 12),
+      r: randomBetween(4.5, 6),
       baseR: 0,
       color: colorHex,
       shape: "circle",
@@ -217,7 +254,7 @@ export function createArena(canvas, sound) {
 
   function growBallFromViewportImpact(ball, impact) {
     const growth = clamp(impact / 180, VIEWPORT_GROWTH_MIN, VIEWPORT_GROWTH_MAX);
-    ball.r = Math.min(MAX_BALL_RADIUS, ball.r + growth);
+    ball.r = Math.min(MAX_BALL_RADIUS, Math.min(width, height) * 0.22, ball.r + growth);
   }
 
   function playBounce(ball, impact, hitX, hitY) {
@@ -282,6 +319,15 @@ export function createArena(canvas, sound) {
       ball.vy = -Math.abs(ball.vy) * RESTITUTION;
       playBounce(ball, impact, ball.x, ball.y);
     }
+
+    // Growth at a corner must not push a ball beyond the adjacent edge.
+    confineToViewport(ball);
+  }
+
+  function confineToViewport(ball) {
+    ball.r = Math.min(ball.r, Math.min(width, height) * 0.22);
+    ball.x = clamp(ball.x, ball.r, width - ball.r);
+    ball.y = clamp(ball.y, ball.r, height - ball.r);
   }
 
   function resolveBallCollisions() {
@@ -336,6 +382,7 @@ export function createArena(canvas, sound) {
     if (shatter.released) return;
 
     shatter.released = true;
+    canvas.classList.add("is-released");
 
     for (const ball of balls) {
       const dx = ball.x - centerX;
@@ -351,7 +398,7 @@ export function createArena(canvas, sound) {
   }
 
   function breakArena() {
-    if (shatter.active) return;
+    if (shatter.active || reducedMotion.matches) return;
 
     shatter.active = true;
     shatter.released = false;
@@ -437,9 +484,9 @@ export function createArena(canvas, sound) {
     if (fade <= 0.001) return;
 
     const aura = ctx.createRadialGradient(centerX, centerY, radius * 0.12, centerX, centerY, radius * 1.26);
-    aura.addColorStop(0, `rgba(255, 255, 255, ${0.95 * fade})`);
-    aura.addColorStop(0.56, `rgba(255, 250, 238, ${0.78 * fade})`);
-    aura.addColorStop(1, `rgba(232, 223, 204, ${0.12 * fade})`);
+    aura.addColorStop(0, `rgba(255, 255, 255, ${0.35 * fade})`);
+    aura.addColorStop(0.56, `rgba(255, 255, 255, ${0.16 * fade})`);
+    aura.addColorStop(1, `rgba(232, 234, 223, ${0.12 * fade})`);
 
     ctx.beginPath();
     ctx.arc(centerX, centerY, radius, 0, Math.PI * 2);
@@ -448,8 +495,8 @@ export function createArena(canvas, sound) {
 
     ctx.beginPath();
     ctx.arc(centerX, centerY, radius, 0, Math.PI * 2);
-    ctx.lineWidth = 3;
-    ctx.strokeStyle = `rgba(93, 65, 37, ${0.22 * fade})`;
+    ctx.lineWidth = 1.5;
+    ctx.strokeStyle = `rgba(121, 131, 103, ${0.6 * fade})`;
     ctx.stroke();
 
     if (!shatter.active) return;
@@ -536,9 +583,10 @@ export function createArena(canvas, sound) {
   }
 
   function beginDrag(event) {
-    if (!useWindowBounds() || event.button !== 0 || dragState) return false;
+    if (reducedMotion.matches || !useWindowBounds() || event.button !== 0 || dragState) return false;
 
     const pointer = getPointerPosition(event);
+    if (pointer.x < 0 || pointer.x > width || pointer.y < 0 || pointer.y > height) return false;
     const ball = pickTransformedBall(pointer.x, pointer.y);
     if (!ball) return false;
 
@@ -605,6 +653,14 @@ export function createArena(canvas, sound) {
   function tick(now) {
     const dt = Math.min(0.03, (now - lastFrame) / 1000);
     lastFrame = now;
+    syncAnchor();
+
+    if (reducedMotion.matches) {
+      if (reducedNeedsDraw) drawArena(now);
+      reducedNeedsDraw = false;
+      requestAnimationFrame(tick);
+      return;
+    }
 
     if (shatter.active && !shatter.released && now - shatter.startedAt >= SHATTER_CRACK_MS) {
       releaseToViewport();
@@ -646,12 +702,17 @@ export function createArena(canvas, sound) {
     }
 
     resolveBallCollisions();
+    if (useWindowBounds()) {
+      for (const ball of balls) confineToViewport(ball);
+    }
     drawArena(now);
     requestAnimationFrame(tick);
   }
 
   resize();
   window.addEventListener("resize", resize);
+  window.visualViewport?.addEventListener("resize", resize);
+  window.visualViewport?.addEventListener("scroll", resize);
   function handlePointerDown(event) {
     return beginDrag(event);
   }

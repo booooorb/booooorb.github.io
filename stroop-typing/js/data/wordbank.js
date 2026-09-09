@@ -1,11 +1,11 @@
 const COLORS = [
-  { name: "red", hex: "#f04f43", aliases: ["red"] },
+  { name: "red", hex: "#d93b35", aliases: ["red"] },
   { name: "blue", hex: "#2f7de1", aliases: ["blue"] },
-  { name: "green", hex: "#3fa95f", aliases: ["green"] },
-  { name: "yellow", hex: "#d3b400", aliases: ["yellow"] },
+  { name: "green", hex: "#258444", aliases: ["green"] },
+  { name: "yellow", hex: "#9b8200", aliases: ["yellow"] },
   { name: "purple", hex: "#8d46d8", aliases: ["purple", "violet"] },
-  { name: "orange", hex: "#f28b20", aliases: ["orange"] },
-  { name: "pink", hex: "#ea68b8", aliases: ["pink"] },
+  { name: "orange", hex: "#bf610b", aliases: ["orange"] },
+  { name: "pink", hex: "#c13f8d", aliases: ["pink"] },
   { name: "brown", hex: "#7a5644", aliases: ["brown"] },
 ];
 

@@ -8,6 +8,7 @@ import {
   renderResult,
   renderWarmupState,
   resetHud,
+  setRoundState,
   updateHud,
 } from "../ui/render.js";
 
@@ -55,6 +56,7 @@ export function createGameController(elements, arena, sound) {
     warmupIndex: 0,
     startedAt: 0,
     finishedAt: 0,
+    pausedAt: 0,
     tickId: null,
     currentPrompt: null,
     correctCharCount: 0,
@@ -67,12 +69,13 @@ export function createGameController(elements, arena, sound) {
   }
 
   function focusAnswer() {
+    if (!window.matchMedia("(pointer: fine)").matches || elements.helpDialog.open) return;
     elements.answer.focus({ preventScroll: true });
   }
 
   function elapsedSeconds() {
     if (!state.startedAt) return 0;
-    const endTime = state.running ? Date.now() : state.finishedAt || Date.now();
+    const endTime = state.pausedAt || (state.running ? Date.now() : state.finishedAt || Date.now());
     return Math.max(0, (endTime - state.startedAt) / 1000);
   }
 
@@ -131,6 +134,9 @@ export function createGameController(elements, arena, sound) {
     state.finishedAt = 0;
     state.running = true;
     state.warmupActive = false;
+    state.pausedAt = 0;
+    setRoundState(elements, "running");
+    elements.inputHint.textContent = "Answers advance automatically";
 
     arena.reset();
     sound.resetSequence();
@@ -141,6 +147,7 @@ export function createGameController(elements, arena, sound) {
     clearTick();
 
     state.tickId = setInterval(() => {
+      if (state.pausedAt) return;
       syncHud();
       if (getTimeLeft() <= 0) {
         stopGame(`time! wpm: ${getWpm()}`);
@@ -155,6 +162,9 @@ export function createGameController(elements, arena, sound) {
     state.startedAt = 0;
     state.finishedAt = 0;
     state.correctCharCount = 0;
+    state.pausedAt = 0;
+    elements.answer.disabled = false;
+    elements.answer.placeholder = "Type the ink color";
 
     clearTick();
     resetHud(elements);
@@ -169,6 +179,7 @@ export function createGameController(elements, arena, sound) {
     state.startedAt = 0;
     state.finishedAt = 0;
     state.correctCharCount = 0;
+    state.pausedAt = 0;
     clearTick();
 
     if (state.warmupActive) {
@@ -193,8 +204,13 @@ export function createGameController(elements, arena, sound) {
   }
 
   function setMode(nextMode) {
-    if (state.running || !MODES[nextMode]) return;
+    if (!MODES[nextMode] || nextMode === state.mode) return;
     state.mode = nextMode;
+
+    if (state.running) {
+      restart();
+      return;
+    }
 
     if (state.warmupActive) {
       renderWarmupState(elements, state.mode, state.warmupIndex + 1, WARMUP_PROMPTS.length);
@@ -224,7 +240,7 @@ export function createGameController(elements, arena, sound) {
     }
 
     state.correctCharCount += state.currentPrompt.ink.name.length + 1;
-    elements.mini.textContent = `correct: ${state.currentPrompt.ink.name}`;
+    elements.mini.textContent = `Correct — ${state.currentPrompt.ink.name}. Keep going.`;
 
     elements.answer.value = "";
     syncOverlay();
@@ -244,9 +260,27 @@ export function createGameController(elements, arena, sound) {
     elements.skipWarmup.addEventListener("click", completeWarmup);
     elements.restart.addEventListener("click", restart);
 
+    elements.howToPlay.addEventListener("click", () => {
+      if (state.running) state.pausedAt = Date.now();
+      elements.helpDialog.showModal();
+    });
+    elements.closeHelp.addEventListener("click", () => elements.helpDialog.close());
+    elements.helpDialog.addEventListener("close", () => {
+      if (state.pausedAt) {
+        state.startedAt += Date.now() - state.pausedAt;
+        state.pausedAt = 0;
+        focusAnswer();
+      }
+    });
+    elements.practiceAgain.addEventListener("click", () => {
+      state.pausedAt = 0;
+      elements.helpDialog.close();
+      startWarmup();
+    });
+
     document.addEventListener("pointerdown", (event) => {
       const target = event.target;
-      if (target instanceof Element && target.closest("button")) {
+      if (elements.helpDialog.open || (target instanceof Element && target.closest("button, a, dialog"))) {
         return;
       }
 
@@ -258,14 +292,9 @@ export function createGameController(elements, arena, sound) {
       const handledByArena = arena.handlePointerDown(event);
       if (handledByArena) {
         event.preventDefault();
-      }
-
-      if (!(target instanceof Element)) {
-        focusAnswer();
         return;
       }
-
-      focusAnswer();
+      if (target instanceof Element && target.closest(".stage")) focusAnswer();
     });
 
     window.addEventListener("pointermove", (event) => {
@@ -317,6 +346,27 @@ export function createGameController(elements, arena, sound) {
 
       syncOverlay();
       maybeAdvance();
+    });
+
+    elements.answer.addEventListener("scroll", () => {
+      elements.typedOverlay.scrollLeft = elements.answer.scrollLeft;
+    });
+
+    // On touch devices, leave room for the prompt and guidance above the keyboard.
+    window.visualViewport?.addEventListener("resize", () => {
+      if (!window.matchMedia("(pointer: coarse)").matches || document.activeElement !== elements.answer) return;
+      if (window.visualViewport.height >= 560) return;
+      requestAnimationFrame(() => {
+        const promptTop = elements.stimulus.parentElement.getBoundingClientRect().top;
+        window.scrollBy({ top: promptTop - 12, behavior: "instant" });
+      });
+    });
+
+    document.addEventListener("keydown", (event) => {
+      if (event.key === "Escape" && !elements.helpDialog.open && event.target !== elements.answer) {
+        event.preventDefault();
+        restart();
+      }
     });
   }
 

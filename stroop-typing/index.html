@@ -1,63 +1,83 @@
 <!doctype html>
 <html lang="en">
-
 <head>
     <meta charset="UTF-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>Stroop Type</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover, interactive-widget=resizes-content" />
+    <meta name="theme-color" content="#f6f5f0" />
+    <meta name="description" content="See the color. Find your rhythm. A 30-second typing game with a twist: type the ink color, not the word." />
+    <title>Strooptype — a color typing game</title>
+    <link rel="icon" href="assets/favicon.svg" type="image/svg+xml" />
+    <link rel="preload" href="assets/fonts/cabinet-grotesk-800.woff2" as="font" type="font/woff2" crossorigin />
     <link rel="stylesheet" href="game.css" />
 </head>
-
 <body>
-    <main class="app">
+    <main class="app" data-state="idle">
         <header class="top">
-            <div class="title">strooptype</div>
-
-            <div class="right">
-                <div class="stat">
-                    <div class="label">time</div>
-                    <div class="value"><span id="timeLeft">30</span><span class="unit">s</span></div>
-                </div>
-                <div class="stat">
-                    <div class="label">wpm</div>
-                    <div class="value" id="wpm">0</div>
-                </div>
-            </div>
+            <a class="title" href="../" aria-label="Strooptype — back to projects">strooptype<span aria-hidden="true">.</span></a>
+            <nav aria-label="Game help">
+                <button id="howToPlay" class="textButton" type="button" aria-haspopup="dialog">How to play</button>
+            </nav>
         </header>
-
-        <section class="bar">
-            <div class="modes">
-                <button id="modeCongruent" class="btn active" type="button">Congruent</button>
-                <button id="modeIncongruent" class="btn" type="button">Incongruent</button>
+        <section class="bar" aria-label="Game settings">
+            <div class="modes" role="group" aria-label="Word mode">
+                <button id="modeCongruent" class="btn active" type="button" aria-pressed="true">Congruent</button>
+                <button id="modeIncongruent" class="btn" type="button" aria-pressed="false">Incongruent</button>
             </div>
-
-            <div class="actions">
-                <button id="skipWarmup" class="btn" type="button" hidden>skip tutorial</button>
-                <div id="statusPill" class="statusText">word = color</div>
-                <button id="restart" class="btn" type="button">restart</button>
-            </div>
+            <button id="restart" class="textButton restart" type="button"><span aria-hidden="true">↻</span> Restart</button>
         </section>
-
-        <section class="stage">
-            <div id="stimulus" class="stimulus is-idle">type to begin</div>
-
+        <section class="stage" aria-label="Typing game">
+            <div class="hud" aria-label="Round statistics">
+                <div class="stat" aria-label="Time remaining">
+                    <span id="timeLeft" class="value">30</span><span class="unit">s left</span>
+                </div>
+                <div class="stat" aria-label="Words per minute">
+                    <span id="wpm" class="value">0</span><span class="unit">WPM</span>
+                </div>
+            </div>
+            <div class="promptArea">
+                <h1 id="stimulus" class="stimulus is-idle">Type to begin.</h1>
+            </div>
+            <div id="resultActions" class="resultActions" hidden></div>
             <div class="inputRow">
+                <label for="answer" class="srOnly">Type the ink color</label>
                 <div class="inputWrap">
                     <div id="typedOverlay" class="typedOverlay" aria-hidden="true"></div>
-                    <input id="answer" class="answer" type="text" inputmode="text" autocomplete="off" spellcheck="false"
-                        placeholder="type the color" />
+                    <input id="answer" class="answer" type="text" inputmode="text" enterkeyhint="go"
+                        autocomplete="off" autocapitalize="none" autocorrect="off" spellcheck="false"
+                        maxlength="24" aria-describedby="inputHint mini" placeholder="Type the ink color" />
+                </div>
+                <p id="inputHint" class="srOnly">Answers advance automatically</p>
+            </div>
+            <div id="guidance" class="guidance">
+                <div id="mini" class="mini" role="status" aria-live="polite" aria-atomic="true"></div>
+                <div id="tutorialActions" class="tutorialActions" hidden>
+                    <span id="tutorialProgress" class="tutorialProgress">1 of 3</span>
+                    <button id="skipWarmup" class="textButton" type="button" aria-label="Skip tutorial" hidden>Skip</button>
                 </div>
             </div>
-
-            <div id="mini" class="mini"></div>
         </section>
-
-        <section class="anim">
-            <canvas id="stroopArena" class="arena"></canvas>
-        </section>
+        <div class="anim" aria-hidden="true"></div>
     </main>
-
+    <canvas id="stroopArena" class="arena" aria-hidden="true"></canvas>
+    <dialog id="helpDialog" class="helpDialog" aria-labelledby="helpTitle" aria-describedby="helpDescription">
+        <div class="helpContent">
+            <div class="helpHeader">
+                <h2 id="helpTitle">Type the ink color.</h2>
+                <button id="closeHelp" class="textButton" type="button" autofocus>Close <span aria-hidden="true">×</span></button>
+            </div>
+            <p id="helpDescription">Ignore what the word says.</p>
+            <div class="helpExample">
+                <span class="exampleWord">BLUE</span>
+                <p>Type <strong>green</strong></p>
+            </div>
+            <div class="helpRules">
+                <p><strong>Congruent:</strong> the word suggests the color.<br /><strong>Incongruent:</strong> the word names a different color.</p>
+                <p>30 seconds. Correct answers advance automatically.</p>
+            </div>
+            <button id="practiceAgain" class="textButton" type="button">Try the warm-up <span aria-hidden="true">→</span></button>
+        </div>
+    </dialog>
+    <script defer src="js/vendor/gsap.min.js"></script>
     <script type="module" src="js/main.js"></script>
 </body>
-
 </html>
