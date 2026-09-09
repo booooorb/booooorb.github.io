@@ -13,8 +13,8 @@ Live Server's default port.
 The homepage contains three playable games, eight external project links, and
 an Ideas placeholder. The menu shows eight projects per page, with numbered
 page buttons and previous/next controls beside the project count. Search,
-tag filters, featured selection, availability, and sorting reset to
-page 1; changing grid/list views preserves the current page.
+tag filters and Type/Language switching reset to page 1; changing grid/list
+views preserves the current page.
 
 The layout uses the available window height, shrinking thumbnails and spacing
 to keep the header, eight project slots, and footer visible together. Portrait
@@ -28,15 +28,19 @@ The Ideas placeholder has no tags or year until it becomes a project.
 
 Menu interactions are handled by `menu.js`. Without JavaScript, all project
 links remain available in an ordinary scrolling page. Fonts and menu artwork
-are served locally. The sidebar has a dedicated mascot area with room for a
-future animation, followed by a Contact panel. All/featured selection is in the
-filter menu; the footer count updates with the active filters.
+are served locally. The sidebar has a continuously walking mouse animation
+sized to fit its frame, followed by a Contact panel. The Type/Language switch changes
+both the filter row and the tags beneath the projects. The footer count updates
+with the active filters. The language list includes JavaScript, Python, Java,
+Rust, Swift, CSS, and PHP. Rust is ready for future projects. Dominant languages
+follow GitHub’s repository metadata (including CSS for GFFootball); local games
+use JavaScript, and VeryShop uses PHP (WordPress/WooCommerce). Unspecified
+languages display an em dash.
 
 To fill a placeholder, edit its card in `index.html`: update the title, image,
 metadata, and `data-*` search/filter attributes; change `data-status` to
 `available`; and replace the outer `button` with an `a` with the project's real
-`href`. Add its year in a `project-badge` inside the thumbnail. Set `data-featured="true"` to include it in the
-featured selection. Counts are calculated automatically.
+`href`. Add its year in a `project-badge` inside the thumbnail. Set `data-language` to its dominant language in lowercase. Counts are calculated automatically.
 
 The old homepage and its assets are kept in `legacy/`. To retire it, delete that
 folder and remove the footer's `legacy` link. The new menu has no dependencies

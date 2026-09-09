@@ -18,7 +18,7 @@
     <aside class="sidebar" aria-label="Profile and contact">
       <section class="profile-panel">
         <h1 class="monogram"><img src="assets/menu/monogram.svg" width="68" height="54" alt="JY" /></h1>
-        <div class="mascot-stage"><img class="mascot" src="assets/menu/rat.webp" width="190" height="115" alt="A white halftone rat" /></div>
+        <div class="mascot-stage"><img class="mascot" src="assets/menu/mouse-walk.gif" width="800" height="450" alt="A white halftone mouse walking continuously" /></div>
       </section>
       <section class="contact-panel" aria-labelledby="contact-title">
         <h2 id="contact-title">CONTACT</h2>
@@ -41,25 +41,12 @@
             <button type="button" data-view="grid" aria-pressed="true">GRID</button>
             <button type="button" data-view="list" aria-pressed="false">LIST</button>
           </div>
-          <div class="filter-control">
-            <button class="filter-toggle" id="filter-toggle" type="button" aria-expanded="false" aria-controls="filter-panel">
-              <svg width="23" height="23" viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M3 7h16m-3-3 3 3-3 3M21 17H5m3-3-3 3 3 3" /></svg>
-              <span>filter</span>
-            </button>
-            <div class="filter-panel" id="filter-panel" hidden>
-              <div class="collection-controls" aria-label="Project selection">
-                <button type="button" data-selection="all" aria-pressed="true">all</button>
-                <button type="button" data-selection="featured" aria-pressed="false">featured</button>
-              </div>
-              <label for="status-filter">show</label>
-              <select id="status-filter"><option value="all">all projects</option><option value="available">available projects</option><option value="placeholder">coming soon</option></select>
-              <label for="sort-order">sort by</label>
-              <select id="sort-order"><option value="default">original order</option><option value="name">name: a–z</option></select>
-              <button type="button" class="text-button" id="reset-filters">reset filters</button>
-            </div>
+          <div class="view-controls tag-mode-controls" role="group" aria-label="Filter projects by">
+            <button type="button" data-tag-mode="type" aria-pressed="true" aria-controls="type-filters language-filters project-grid">TYPE</button>
+            <button type="button" data-tag-mode="language" aria-pressed="false" aria-controls="type-filters language-filters project-grid">LANGUAGE</button>
           </div>
         </div>
-        <nav class="categories" aria-label="Project tags">
+        <nav class="categories" id="type-filters" aria-label="Project type filters">
           <button type="button" data-category="all" aria-pressed="true">ALL</button>
           <button type="button" data-category="interactive" aria-pressed="false">INTERACTIVE</button>
           <button type="button" data-category="software" aria-pressed="false">SOFTWARE</button>
@@ -67,56 +54,66 @@
           <button type="button" data-category="web" aria-pressed="false">WEB</button>
           <button type="button" data-category="machine-learning" aria-pressed="false" aria-label="Machine learning">ML</button>
         </nav>
+        <nav class="categories" id="language-filters" aria-label="Project language filters" hidden>
+          <button type="button" data-category="all" aria-pressed="true">ALL</button>
+          <button type="button" data-category="javascript" aria-pressed="false">JAVASCRIPT</button>
+          <button type="button" data-category="python" aria-pressed="false">PYTHON</button>
+          <button type="button" data-category="java" aria-pressed="false">JAVA</button>
+          <button type="button" data-category="rust" aria-pressed="false">RUST</button>
+          <button type="button" data-category="swift" aria-pressed="false">SWIFT</button>
+          <button type="button" data-category="css" aria-pressed="false">CSS</button>
+          <button type="button" data-category="php" aria-pressed="false">PHP</button>
+        </nav>
       </header>
 
       <!-- Add future projects here. Use a real href only when a project is available. -->
       <section class="project-results" aria-label="Projects">
       <div class="projects-grid" id="project-grid" data-layout="grid">
-        <a class="project-card" href="brain-surfing/" data-title="Brainwave Surfing" data-categories="interactive web" data-tags="interactive web" data-status="available" data-featured="true">
+        <a class="project-card" href="brain-surfing/" data-language="javascript" data-title="Brainwave Surfing" data-categories="interactive web" data-tags="interactive web" data-status="available" data-featured="true">
           <div class="project-media artwork-brain"><img src="assets/button-images/brain-surfing.png" width="900" height="420" alt="" /><span class="project-badge"><span class="sr-only">Made in </span>2026</span></div>
           <div class="project-caption"><h2>Brainwave Surfing</h2><p class="project-tagline">INTERACTIVE · WEB</p></div>
         </a>
-        <a class="project-card" href="stroop-typing/" data-title="Strooptype" data-categories="interactive web" data-tags="interactive web" data-status="available" data-featured="true">
+        <a class="project-card" href="stroop-typing/" data-language="javascript" data-title="Strooptype" data-categories="interactive web" data-tags="interactive web" data-status="available" data-featured="true">
           <div class="project-media artwork-stroop"><img src="assets/button-images/stroop-typing.png" width="900" height="420" alt="" /><span class="project-badge"><span class="sr-only">Made in </span>2026</span></div>
           <div class="project-caption"><h2>Strooptype</h2><p class="project-tagline">INTERACTIVE · WEB</p></div>
         </a>
-        <a class="project-card" href="goose-mayhem/" data-title="Desktop Goose Mayhem" data-categories="interactive web" data-tags="interactive web" data-status="available" data-featured="true">
+        <a class="project-card" href="goose-mayhem/" data-language="javascript" data-title="Desktop Goose Mayhem" data-categories="interactive web" data-tags="interactive web" data-status="available" data-featured="true">
           <div class="project-media"><img src="assets/menu/goose-mayhem.webp" width="1000" height="760" alt="" /><span class="project-badge"><span class="sr-only">Made in </span>2026</span></div>
           <div class="project-caption"><h2>Desktop Goose Mayhem</h2><p class="project-tagline">INTERACTIVE · WEB</p></div>
         </a>
-        <a class="project-card" href="bw2-trainer-class-music-editor/" data-title="BW2 Trainer Class Music Editor" data-categories="software" data-tags="software" data-status="available">
+        <a class="project-card" href="bw2-trainer-class-music-editor/" data-language="java" data-title="BW2 Trainer Class Music Editor" data-categories="software" data-tags="software" data-status="available">
           <div class="project-media link-preview"><span class="link-arrow" aria-hidden="true">↗</span><span class="link-name" aria-hidden="true">BW2</span><span class="link-host" aria-hidden="true">github.com/booooorb</span><span class="project-badge"><span class="sr-only">Made in </span>2025</span></div>
           <div class="project-caption"><h2>BW2 Trainer Class Music Editor</h2><p class="project-tagline">SOFTWARE</p></div>
         </a>
-        <a class="project-card" href="woo-display/" data-title="WooDisplay" data-categories="software" data-tags="software" data-status="available">
+        <a class="project-card" href="woo-display/" data-language="swift" data-title="WooDisplay" data-categories="software" data-tags="software" data-status="available">
           <div class="project-media link-preview"><span class="link-arrow" aria-hidden="true">↗</span><span class="link-name" aria-hidden="true">WooDisplay</span><span class="link-host" aria-hidden="true">github.com/booooorb</span><span class="project-badge"><span class="sr-only">Made in </span>2026</span></div>
           <div class="project-caption"><h2>WooDisplay</h2><p class="project-tagline">SOFTWARE</p></div>
         </a>
-        <a class="project-card" href="gf-football/" data-title="GFFootball" data-categories="interactive web" data-tags="interactive web" data-status="available">
+        <a class="project-card" href="gf-football/" data-language="css" data-title="GFFootball" data-categories="interactive web" data-tags="interactive web" data-status="available">
           <div class="project-media link-preview"><span class="link-arrow" aria-hidden="true">↗</span><span class="link-name" aria-hidden="true">GFFootball</span><span class="link-host" aria-hidden="true">github.com/booooorb</span><span class="project-badge"><span class="sr-only">Made in </span>2026</span></div>
           <div class="project-caption"><h2>GFFootball</h2><p class="project-tagline">INTERACTIVE · WEB</p></div>
         </a>
-        <a class="project-card" href="dlc-gait-assembler/" data-title="DLC Gait Assembler" data-categories="software research machine-learning" data-tags="software research machine-learning" data-status="available">
+        <a class="project-card" href="dlc-gait-assembler/" data-language="python" data-title="DLC Gait Assembler" data-categories="software research machine-learning" data-tags="software research machine-learning" data-status="available">
           <div class="project-media link-preview"><span class="link-arrow" aria-hidden="true">↗</span><span class="link-name" aria-hidden="true">DLC</span><span class="link-host" aria-hidden="true">github.com/booooorb</span><span class="project-badge"><span class="sr-only">Made in </span>2026</span></div>
           <div class="project-caption"><h2>DLC Gait Assembler</h2><p class="project-tagline">SOFTWARE · RESEARCH · ML</p></div>
         </a>
-        <a class="project-card" href="myoassist-lumbar-flexion-model/" data-title="28 Muscle MyoAssist Lumbar Model" data-categories="research" data-tags="research" data-status="available">
+        <a class="project-card" href="myoassist-lumbar-flexion-model/" data-language="python" data-title="28 Muscle MyoAssist Lumbar Model" data-categories="research" data-tags="research" data-status="available">
           <div class="project-media link-preview"><span class="link-arrow" aria-hidden="true">↗</span><span class="link-name" aria-hidden="true">MyoAssist</span><span class="link-host" aria-hidden="true">github.com/booooorb</span><span class="project-badge"><span class="sr-only">Made in </span>2026</span></div>
           <div class="project-caption"><h2>28 Muscle MyoAssist Lumbar Model</h2><p class="project-tagline">RESEARCH</p></div>
         </a>
-        <a class="project-card" href="sbl-annotator/" data-title="SBL Annotator" data-categories="software research" data-tags="software research" data-status="available">
+        <a class="project-card" href="sbl-annotator/" data-language="python" data-title="SBL Annotator" data-categories="software research" data-tags="software research" data-status="available">
           <div class="project-media link-preview"><span class="link-arrow" aria-hidden="true">↗</span><span class="link-name" aria-hidden="true">SBL</span><span class="link-host" aria-hidden="true">github.com/booooorb</span><span class="project-badge"><span class="sr-only">Made in </span>2026</span></div>
           <div class="project-caption"><h2>SBL Annotator</h2><p class="project-tagline">SOFTWARE · RESEARCH</p></div>
         </a>
-        <a class="project-card" href="field-activity-detector/" data-title="Field Activity Detector" data-categories="web machine-learning" data-tags="web machine-learning" data-status="available">
+        <a class="project-card" href="field-activity-detector/" data-language="python" data-title="Field Activity Detector" data-categories="web machine-learning" data-tags="web machine-learning" data-status="available">
           <div class="project-media link-preview"><span class="link-arrow" aria-hidden="true">↗</span><span class="link-name" aria-hidden="true">Field Activity</span><span class="link-host" aria-hidden="true">github.com/booooorb</span><span class="project-badge"><span class="sr-only">Made in </span>2026</span></div>
           <div class="project-caption"><h2>Field Activity Detector</h2><p class="project-tagline">WEB · ML</p></div>
         </a>
-        <a class="project-card" href="veryshop/" data-title="veryshop.ca" data-categories="web" data-tags="web" data-status="available">
+        <a class="project-card" href="veryshop/" data-language="php" data-title="veryshop.ca" data-categories="web" data-tags="web" data-status="available">
           <div class="project-media link-preview"><span class="link-arrow" aria-hidden="true">↗</span><span class="link-name" aria-hidden="true">veryshop.ca</span><span class="link-host" aria-hidden="true">veryshop.ca</span><span class="project-badge"><span class="sr-only">Made in </span>2025</span></div>
           <div class="project-caption"><h2>veryshop.ca</h2><p class="project-tagline">WEB</p></div>
         </a>
-        <button type="button" class="project-card ideas-card" data-title="Ideas" data-categories="" data-tags="" data-status="placeholder" data-description="Room for the next idea. More projects will appear here.">
+        <button type="button" class="project-card ideas-card" data-language="" data-title="Ideas" data-categories="" data-tags="" data-status="placeholder" data-description="Room for the next idea. More projects will appear here.">
           <div class="project-media ideas-preview"><span class="plus" aria-hidden="true">+</span><span>more to come...</span></div>
           <div class="project-caption"><h2>Ideas</h2><p class="project-tagline">—</p></div>
         </button>

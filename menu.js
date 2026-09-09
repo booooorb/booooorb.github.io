@@ -3,13 +3,13 @@
   const grid = document.querySelector("#project-grid");
   const cards = Array.from(grid.querySelectorAll(".project-card"));
   const search = document.querySelector("#project-search");
-  const statusFilter = document.querySelector("#status-filter");
-  const sortOrder = document.querySelector("#sort-order");
-  const filterToggle = document.querySelector("#filter-toggle");
-  const filterPanel = document.querySelector("#filter-panel");
   const dialog = document.querySelector("#info-dialog");
   const PAGE_SIZE = 8;
-  const state = { category: "all", selection: "all", page: 1 };
+  const state = { tagMode: "type", category: "all", page: 1 };
+  const typeFilters = document.querySelector("#type-filters");
+  const languageFilters = document.querySelector("#language-filters");
+  const typeLabels = new Map(Array.from(typeFilters.querySelectorAll("[data-category]"), (button) => [button.dataset.category, button.textContent]));
+  const languageLabels = new Map(Array.from(languageFilters.querySelectorAll("[data-category]"), (button) => [button.dataset.category, button.textContent]));
   const pagination = document.querySelector(".pagination");
   const pageNumbers = document.querySelector("#page-numbers");
   const previousPage = document.querySelector("#previous-page");
@@ -79,16 +79,12 @@
   function applyFilters({ keepPage = false } = {}) {
     if (!keepPage) state.page = 1;
     const words = search.value.trim().toLocaleLowerCase().split(/\s+/).filter(Boolean);
-    const ordered = sortOrder.value === "name"
-      ? [...cards].sort((a, b) => a.dataset.title.localeCompare(b.dataset.title))
-      : cards;
-    const matches = ordered.filter((card) => {
+    const matches = cards.filter((card) => {
       const data = card.dataset;
-      const haystack = `${data.title} ${data.tags.replaceAll("-", " ")} ${data.tags.includes("machine-learning") ? "ml" : ""}`.toLocaleLowerCase();
+      const haystack = `${data.title} ${data.language} ${data.tags.replaceAll("-", " ")} ${data.tags.includes("machine-learning") ? "ml" : ""}`.toLocaleLowerCase();
+      const tags = state.tagMode === "language" ? [data.language] : data.categories.split(" ");
       return words.every((word) => haystack.includes(word))
-        && (state.category === "all" || data.categories.split(" ").includes(state.category))
-        && (state.selection === "all" || data.featured === "true")
-        && (statusFilter.value === "all" || data.status === statusFilter.value);
+        && (state.category === "all" || tags.includes(state.category));
     });
     const count = matches.length;
     const pageCount = Math.max(1, Math.ceil(count / PAGE_SIZE));
@@ -96,7 +92,6 @@
     const start = (state.page - 1) * PAGE_SIZE;
     const visibleCards = new Set(matches.slice(start, start + PAGE_SIZE));
     cards.forEach((card) => { card.hidden = !visibleCards.has(card); });
-    ordered.forEach((card) => grid.append(card));
     grid.hidden = count === 0;
     document.querySelector("#item-count").textContent = `${count} ${count === 1 ? "item" : "items"}`;
     document.querySelector("#empty-state").hidden = count !== 0;
@@ -105,41 +100,40 @@
       : "No projects found.";
     renderPagination(pageCount);
     setPressed("[data-category]", "category", state.category);
-    setPressed("[data-selection]", "selection", state.selection);
+    setPressed("[data-tag-mode]", "tagMode", state.tagMode);
     scheduleCaptionFit();
   }
 
   function resetFilters() {
     search.value = "";
     state.category = "all";
-    state.selection = "all";
-    statusFilter.value = "all";
-    sortOrder.value = "default";
     applyFilters();
-  }
-  function closeFilters(restoreFocus = false) {
-    filterPanel.hidden = true;
-    filterToggle.setAttribute("aria-expanded", "false");
-    if (restoreFocus) filterToggle.focus();
   }
   document.querySelector(".search").addEventListener("submit", (event) => {
     event.preventDefault();
     applyFilters();
   });
   search.addEventListener("input", applyFilters);
-  statusFilter.addEventListener("change", applyFilters);
-  sortOrder.addEventListener("change", applyFilters);
   document.querySelectorAll("[data-category]").forEach((button) => {
     button.addEventListener("click", () => {
       state.category = button.dataset.category;
       applyFilters();
     });
   });
-  document.querySelectorAll("[data-selection]").forEach((button) => {
+  document.querySelectorAll("[data-tag-mode]").forEach((button) => {
     button.addEventListener("click", () => {
-      state.selection = button.dataset.selection;
+      if (state.tagMode === button.dataset.tagMode) return;
+      state.tagMode = button.dataset.tagMode;
+      state.category = "all";
+      typeFilters.hidden = state.tagMode !== "type";
+      languageFilters.hidden = state.tagMode !== "language";
+      cards.forEach((card) => {
+        const tagline = state.tagMode === "language"
+          ? languageLabels.get(card.dataset.language)
+          : card.dataset.tags.split(" ").map((tag) => typeLabels.get(tag)).filter(Boolean).join(" · ");
+        card.querySelector(".project-tagline").textContent = tagline || "—";
+      });
       applyFilters();
-      closeFilters(true);
     });
   });
   document.querySelectorAll("[data-view]").forEach((button) => {
@@ -148,22 +142,6 @@
       setPressed("[data-view]", "view", button.dataset.view);
       scheduleCaptionFit();
     });
-  });
-  filterToggle.addEventListener("click", () => {
-    const opening = filterPanel.hidden;
-    filterPanel.hidden = !opening;
-    filterToggle.setAttribute("aria-expanded", String(opening));
-    if (opening) statusFilter.focus();
-  });
-  document.addEventListener("click", (event) => {
-    if (!event.target.closest(".filter-control")) closeFilters();
-  });
-  document.addEventListener("keydown", (event) => {
-    if (event.key === "Escape" && !filterPanel.hidden) closeFilters(true);
-  });
-  document.querySelector("#reset-filters").addEventListener("click", () => {
-    resetFilters();
-    closeFilters(true);
   });
   document.querySelector("#clear-search").addEventListener("click", () => {
     resetFilters();

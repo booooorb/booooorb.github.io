@@ -5,7 +5,10 @@
   The SIL Open Font License is included. Glyph comparisons against the supplied
   PNG favored this family, especially for project titles and the footer. The PNG
   does not contain font metadata, so the original font identity cannot be verified.
-- `rat.webp`: a sidebar mascot generated with the built-in ImageGen tool from
+- `mouse-walk.gif`: the active sidebar mascot, from the supplied walking animation,
+  cleaned to pure black and trimmed to a continuously looping walking section.
+  The original 800 × 450 frame and stippled artwork are preserved.
+- `rat.webp`: the previous static sidebar mascot generated with the built-in ImageGen tool from
   the supplied reference, then resized and encoded as WebP for the website.
   Prompt: reproduce only the reference's white stippled halftone rat, in the
   same right-facing pose with the full tail and feet visible, on pure black,
