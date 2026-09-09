@@ -1,0 +1,6 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="900" height="420" viewBox="0 0 900 420">
+  <rect width="900" height="420" fill="#080808"/>
+  <path d="M429 132h42v42m0-42-42 42" fill="none" stroke="#efefed" stroke-width="4"/>
+  <text x="450" y="235" text-anchor="middle" font-family="monospace" font-size="36" fill="#efefed">booooorb</text>
+  <text x="450" y="280" text-anchor="middle" font-family="monospace" font-size="19" fill="#c6c6c5">github.com/booooorb</text>
+</svg>

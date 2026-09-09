@@ -17,6 +17,77 @@
   const fittedText = cards.flatMap((card) => [card.querySelector("h2"), card.querySelector(".project-tagline")]);
   let captionFitFrame;
 
+  const mascotDialogue = document.querySelector(".mascot-dialogue");
+  const desktopDialogue = matchMedia("(min-width: 701px) and (orientation: landscape)");
+  const reducedMotion = matchMedia("(prefers-reduced-motion: reduce)");
+  const mouseThoughts = [
+    "almost there... probably...",
+    "thinking about cheese...",
+    "what was i doing again?",
+    "this floor is endless...",
+    "somebody moved the exit...",
+    "this counts as cardio, right..?",
+    "still walking...",
+  ];
+  let thoughtQueue = [];
+  let lastThought;
+  let dialogueTimer;
+
+  function nextThought() {
+    if (!thoughtQueue.length) {
+      thoughtQueue = [...mouseThoughts];
+      for (let i = thoughtQueue.length - 1; i > 0; i -= 1) {
+        const j = Math.floor(Math.random() * (i + 1));
+        [thoughtQueue[i], thoughtQueue[j]] = [thoughtQueue[j], thoughtQueue[i]];
+      }
+      // Every phrase appears once per round, without repeating across rounds.
+      if (thoughtQueue.at(-1) === lastThought) {
+        [thoughtQueue[0], thoughtQueue[thoughtQueue.length - 1]] = [thoughtQueue.at(-1), thoughtQueue[0]];
+      }
+    }
+    lastThought = thoughtQueue.pop();
+    return lastThought;
+  }
+
+  function typeThought() {
+    const thought = nextThought();
+    let cursor = 0;
+    mascotDialogue.textContent = "";
+    mascotDialogue.classList.add("is-visible");
+    function typeCharacter() {
+      const character = thought[cursor];
+      // Delay before revealing punctuation, so even a final dot arrives slowly.
+      const delay = character === "." ? 650 : character === "?" ? 220 : 65 + Math.random() * 30;
+      dialogueTimer = setTimeout(() => {
+        cursor += 1;
+        mascotDialogue.textContent = thought.slice(0, cursor);
+        if (cursor < thought.length) typeCharacter();
+        else dialogueTimer = setTimeout(() => {
+          mascotDialogue.classList.remove("is-visible");
+          dialogueTimer = setTimeout(typeThought, 900);
+        }, 2600);
+      }, delay);
+    }
+    typeCharacter();
+  }
+
+  function updateDialogue() {
+    clearTimeout(dialogueTimer);
+    mascotDialogue.textContent = "";
+    mascotDialogue.classList.remove("is-visible");
+    if (!desktopDialogue.matches || document.hidden) return;
+    if (reducedMotion.matches) {
+      mascotDialogue.textContent = "still walking...";
+      mascotDialogue.classList.add("is-visible");
+      return;
+    }
+    dialogueTimer = setTimeout(typeThought, 700);
+  }
+  desktopDialogue.addEventListener("change", updateDialogue);
+  reducedMotion.addEventListener("change", updateDialogue);
+  document.addEventListener("visibilitychange", updateDialogue);
+  updateDialogue();
+
   function fitCaptions() {
     // Start at the CSS size so titles and taglines can grow again after a resize or view change.
     fittedText.forEach((title) => title.style.removeProperty("font-size"));
@@ -158,48 +229,223 @@
     if (button.disabled) pageNumbers.querySelector('[aria-current="page"]').focus();
   });
 
-  function showDialog({ title, description, eyebrow = "PROJECTS", link, linkText }) {
+  const preview = document.querySelector("#dialog-preview");
+  const description = document.querySelector("#dialog-description");
+  const dialogTags = document.querySelector("#dialog-tags");
+  const action = document.querySelector("#dialog-link");
+  let descriptionRequest;
+
+  // A small, text-only Markdown subset. Raw HTML is never inserted into the page.
+  function appendInline(parent, text, baseURL) {
+    const tokens = /\[([^\]\n]+)\]\(([^\s)]+)\)|\*\*([^*\n]+)\*\*|\*([^*\n]+)\*|`([^`\n]+)`/g;
+    let cursor = 0;
+    for (const match of text.matchAll(tokens)) {
+      parent.append(text.slice(cursor, match.index));
+      let node;
+      if (match[1]) {
+        try {
+          const url = new URL(match[2], baseURL);
+          if (["https:", "http:", "mailto:"].includes(url.protocol)) {
+            node = document.createElement("a");
+            node.href = url.href;
+            if (url.origin !== location.origin && url.protocol !== "mailto:") {
+              node.target = "_blank";
+              node.rel = "noopener noreferrer";
+            }
+            node.textContent = match[1];
+          }
+        } catch { /* Invalid links remain readable as plain text. */ }
+      } else {
+        node = document.createElement(match[3] ? "strong" : match[4] ? "em" : "code");
+        node.textContent = match[3] || match[4] || match[5];
+      }
+      parent.append(node || match[0]);
+      cursor = match.index + match[0].length;
+    }
+    parent.append(text.slice(cursor));
+  }
+
+  function renderMarkdown(markdown, baseURL) {
+    const content = document.createDocumentFragment();
+    let block;
+    for (const line of markdown.replace(/\r\n?/g, "\n").trim().split("\n")) {
+      if (!line.trim()) { block = null; continue; }
+      const heading = line.match(/^#{1,6}\s+(.+?)\s*#*$/);
+      const item = line.match(/^\s*(?:([-*+])|\d+\.)\s+(.+)$/);
+      if (heading) {
+        const title = document.createElement("h3");
+        appendInline(title, heading[1], baseURL);
+        content.append(title);
+        block = null;
+      } else if (item) {
+        const listTag = item[1] ? "UL" : "OL";
+        if (block?.tagName !== listTag) {
+          block = document.createElement(listTag);
+          content.append(block);
+        }
+        const entry = document.createElement("li");
+        appendInline(entry, item[2], baseURL);
+        block.append(entry);
+      } else {
+        if (block?.tagName !== "P") {
+          block = document.createElement("p");
+          content.append(block);
+        } else block.append(" ");
+        appendInline(block, line.trim(), baseURL);
+      }
+    }
+    description.replaceChildren(content);
+  }
+
+  function renderTags(groups) {
+    dialogTags.replaceChildren();
+    for (const [label, tags] of groups) {
+      if (!tags.length) continue;
+      const row = document.createElement("div");
+      const term = document.createElement("dt");
+      term.textContent = label;
+      const values = document.createElement("dd");
+      tags.forEach((tag) => {
+        const value = document.createElement("span");
+        value.textContent = tag;
+        values.append(value);
+      });
+      row.append(term, values);
+      dialogTags.append(row);
+    }
+    dialogTags.hidden = !dialogTags.children.length;
+  }
+
+  async function showDialog({ title, descriptionSrc, eyebrow = "PROJECT", media, image, imageAlt, documentPreview = false, tags = [], link, linkText, download }) {
+    descriptionRequest?.abort();
+    const request = new AbortController();
+    descriptionRequest = request;
     document.querySelector("#dialog-title").textContent = title;
-    document.querySelector("#dialog-description").textContent = description;
     document.querySelector("#dialog-eyebrow").textContent = eyebrow;
-    const action = document.querySelector("#dialog-link");
+    preview.replaceChildren();
+    preview.classList.toggle("document-preview", documentPreview);
+    if (media) {
+      const artwork = media.cloneNode(true);
+      artwork.querySelectorAll(".project-badge").forEach((badge) => badge.remove());
+      const thumbnail = artwork.querySelector("img");
+      if (thumbnail) thumbnail.alt = `${title} preview`;
+      else { artwork.setAttribute("role", "img"); artwork.setAttribute("aria-label", `${title} preview`); }
+      preview.append(artwork);
+    } else if (image) {
+      const thumbnail = document.createElement("img");
+      thumbnail.src = image;
+      thumbnail.alt = imageAlt || `${title} preview`;
+      preview.append(thumbnail);
+    }
+    preview.hidden = !preview.childElementCount;
+    renderTags(tags);
     action.hidden = !link;
+    ["href", "target", "rel", "download"].forEach((attribute) => action.removeAttribute(attribute));
+    action.textContent = linkText || "";
     if (link) {
       action.href = link;
-      action.textContent = linkText;
+      if (download) action.setAttribute("download", download);
+      else if (new URL(link, document.baseURI).origin !== location.origin) {
+        action.target = "_blank";
+        action.rel = "noopener noreferrer";
+      }
     }
-    dialog.showModal();
+    description.textContent = "Loading description…";
+    description.setAttribute("aria-busy", "true");
+    if (!dialog.open) dialog.showModal();
+    dialog.scrollTop = 0;
+    try {
+      const response = await fetch(descriptionSrc, { signal: request.signal, cache: "no-store" });
+      if (!response.ok) throw new Error(`Description returned ${response.status}`);
+      const markdown = await response.text();
+      if (request.signal.aborted) return;
+      renderMarkdown(markdown, new URL(descriptionSrc, document.baseURI));
+      if (!description.textContent.trim()) description.textContent = "Description coming soon.";
+    } catch {
+      if (request.signal.aborted) return;
+      description.textContent = "Description is unavailable right now.";
+      const retry = document.createElement("button");
+      retry.type = "button";
+      retry.className = "text-button description-retry";
+      retry.textContent = "Try again";
+      retry.addEventListener("click", () => showDialog({ title, descriptionSrc, eyebrow, media, image, imageAlt, documentPreview, tags, link, linkText, download }));
+      description.append(retry);
+    } finally {
+      if (!request.signal.aborted) description.setAttribute("aria-busy", "false");
+    }
   }
-  cards.filter((card) => card.dataset.status === "placeholder").forEach((card) => {
-    card.addEventListener("click", () => showDialog({
-      title: card.dataset.title,
-      description: card.dataset.description,
-      eyebrow: "COMING SOON",
-    }));
+
+  cards.forEach((card) => {
+    card.setAttribute("aria-haspopup", "dialog");
+    card.setAttribute("aria-controls", "info-dialog");
+    card.setAttribute("role", "button");
+    card.addEventListener("click", (event) => {
+      if (event.ctrlKey || event.metaKey || event.shiftKey || event.altKey) return;
+      event.preventDefault();
+      const data = card.dataset;
+      showDialog({
+        title: data.title,
+        descriptionSrc: data.descriptionSrc || `${card.getAttribute("href")}description.md`,
+        eyebrow: data.status === "placeholder" ? "COMING SOON" : "PROJECT",
+        media: data.preview ? null : card.querySelector(".project-media"),
+        image: data.preview,
+        tags: [
+          ["TYPE", data.categories.split(" ").map((tag) => typeLabels.get(tag)).filter(Boolean)],
+          ["LANGUAGE", [languageLabels.get(data.language)].filter(Boolean)],
+        ],
+        link: data.play || data.repo || data.website,
+        linkText: data.play ? "Play" : data.repo ? "View GitHub repo ↗" : "Visit website ↗",
+      });
+    });
+    if (card.tagName === "A") card.addEventListener("keydown", (event) => {
+      if (event.key === " ") { event.preventDefault(); card.click(); }
+    });
   });
   const info = {
     about: {
-      title: "build. analyze. iterate.",
-      description: "A growing collection of browser games, software experiments, and research projects. Explore browser games, GitHub projects, and VeryShop, with room for more to come.",
-      eyebrow: "ABOUT JY",
+      title: "About",
+      descriptionSrc: "about/description.md",
+      image: "assets/menu/rat.webp",
+      imageAlt: "White halftone mouse on a black background",
     },
     resume: {
-      title: "more to come.",
-      description: "A resume has not been added yet. In the meantime, you can explore the projects on GitHub.",
-      eyebrow: "RESUME",
+      title: "Resume",
+      descriptionSrc: "resume/description.md",
+      image: "resume/preview.png",
+      imageAlt: "Resume document preview — placeholder",
+      documentPreview: true,
+      link: "resume/resume.pdf",
+      linkText: "Download",
+      download: "JY-Resume.pdf",
+    },
+    github: {
+      title: "Github",
+      descriptionSrc: "github/description.md",
+      image: "github/preview.svg",
+      imageAlt: "booooorb on GitHub",
+      tags: [["TYPE", ["CODE", "PROFILE"]]],
       link: "https://github.com/booooorb",
-      linkText: "view github profile ↗",
+      linkText: "View GitHub profile ↗",
     },
     cv: {
-      title: "more to come.",
-      description: "A CV has not been added yet. In the meantime, you can explore the projects on GitHub.",
-      eyebrow: "CV",
-      link: "https://github.com/booooorb",
-      linkText: "view github profile ↗",
+      title: "CV",
+      descriptionSrc: "cv/description.md",
+      image: "cv/preview.png",
+      imageAlt: "CV document preview — placeholder",
+      documentPreview: true,
+      link: "cv/cv.pdf",
+      linkText: "Download",
+      download: "JY-CV.pdf",
     },
   };
   document.querySelectorAll("[data-info]").forEach((button) => {
-    button.addEventListener("click", () => showDialog(info[button.dataset.info]));
+    button.setAttribute("aria-haspopup", "dialog");
+    button.setAttribute("aria-controls", "info-dialog");
+    button.addEventListener("click", () => showDialog({ ...info[button.dataset.info], eyebrow: "MENU" }));
+  });
+  dialog.addEventListener("close", () => {
+    descriptionRequest?.abort();
+    description.setAttribute("aria-busy", "false");
   });
   dialog.addEventListener("click", (event) => {
     const bounds = dialog.getBoundingClientRect();
