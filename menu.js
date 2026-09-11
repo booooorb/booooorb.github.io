@@ -316,7 +316,8 @@
     dialogTags.hidden = !dialogTags.children.length;
   }
 
-  async function showDialog({ title, descriptionSrc, eyebrow = "PROJECT", media, image, imageAlt, documentPreview = false, tags = [], link, linkText, download }) {
+  async function showDialog({ title, descriptionSrc, eyebrow = "PROJECT", media, image, imageAlt, documentPreview = false, tags = [], link, linkText, download, card }) {
+    dialog.dataset.project = card?.getAttribute("href") || "";
     descriptionRequest?.abort();
     const request = new AbortController();
     descriptionRequest = request;
@@ -327,7 +328,7 @@
     if (media) {
       const artwork = media.cloneNode(true);
       artwork.querySelectorAll(".project-badge").forEach((badge) => badge.remove());
-      artwork.querySelectorAll(".preview-dither").forEach((canvas) => canvas.remove());
+      artwork.querySelectorAll(".preview-dither, .preview-video-surface").forEach((layer) => layer.remove());
       artwork.querySelectorAll(".dither-ready").forEach((image) => image.classList.remove("dither-ready"));
       const thumbnail = artwork.querySelector("img");
       if (thumbnail) thumbnail.alt = `${title} preview`;
@@ -340,6 +341,7 @@
       preview.append(thumbnail);
     }
     preview.hidden = !preview.childElementCount;
+    preview.dispatchEvent(new CustomEvent("preview:open", { bubbles: true, detail: { source: media, card } }));
     renderTags(tags);
     action.hidden = !link;
     ["href", "target", "rel", "download"].forEach((attribute) => action.removeAttribute(attribute));
@@ -370,7 +372,7 @@
       retry.type = "button";
       retry.className = "text-button description-retry";
       retry.textContent = "Try again";
-      retry.addEventListener("click", () => showDialog({ title, descriptionSrc, eyebrow, media, image, imageAlt, documentPreview, tags, link, linkText, download }));
+      retry.addEventListener("click", () => showDialog({ title, descriptionSrc, eyebrow, media, image, imageAlt, documentPreview, tags, link, linkText, download, card }));
       description.append(retry);
     } finally {
       if (!request.signal.aborted) description.setAttribute("aria-busy", "false");
@@ -386,6 +388,7 @@
       event.preventDefault();
       const data = card.dataset;
       showDialog({
+        card,
         title: data.title,
         descriptionSrc: data.descriptionSrc || `${card.getAttribute("href")}description.md`,
         eyebrow: data.status === "placeholder" ? "COMING SOON" : "PROJECT",
@@ -441,6 +444,7 @@
     },
   };
   document.querySelectorAll("[data-info]").forEach((button) => {
+    button.dataset.preview = info[button.dataset.info].image;
     button.setAttribute("aria-haspopup", "dialog");
     button.setAttribute("aria-controls", "info-dialog");
     button.addEventListener("click", () => showDialog({ ...info[button.dataset.info], eyebrow: "MENU" }));

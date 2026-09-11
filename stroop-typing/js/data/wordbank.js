@@ -1,12 +1,12 @@
 const COLORS = [
-  { name: "red", hex: "#d93b35", aliases: ["red"] },
-  { name: "blue", hex: "#2f7de1", aliases: ["blue"] },
-  { name: "green", hex: "#258444", aliases: ["green"] },
-  { name: "yellow", hex: "#9b8200", aliases: ["yellow"] },
-  { name: "purple", hex: "#8d46d8", aliases: ["purple", "violet"] },
-  { name: "orange", hex: "#bf610b", aliases: ["orange"] },
-  { name: "pink", hex: "#c13f8d", aliases: ["pink"] },
-  { name: "brown", hex: "#7a5644", aliases: ["brown"] },
+  { name: "red", hex: "#f13f36", aliases: ["red"] },
+  { name: "blue", hex: "#2979ed", aliases: ["blue"] },
+  { name: "green", hex: "#29ad4a", aliases: ["green"] },
+  { name: "yellow", hex: "#f2d600", aliases: ["yellow"] },
+  { name: "purple", hex: "#9751e8", aliases: ["purple", "violet"] },
+  { name: "orange", hex: "#ff961f", aliases: ["orange"] },
+  { name: "pink", hex: "#ff80b7", aliases: ["pink"] },
+  { name: "brown", hex: "#a16d48", aliases: ["brown"] },
 ];
 
 const ASSOCIATED = {

@@ -1,4 +1,40 @@
 .dialog-preview { position: relative; }
-/* The original image still supplies layout, accessible text, and a fallback. */
-.project-media img.dither-ready, .dialog-preview img.dither-ready { opacity: 0; }
-.preview-dither { position: absolute; display: block; pointer-events: none; }
+/* Enabled in the document head, before a cached image can reach first paint. */
+.previews-enhanced :is(.project-media, .dialog-preview) img:not(.dither-ready):not(.dither-fallback) { opacity: 0; }
+/* Fade the processed layer away to reveal the untouched, full-color image. */
+.preview-dither, .preview-video-surface {
+  --preview-reveal-duration: 1500ms;
+}
+.preview-dither {
+  position: absolute;
+  display: block;
+  pointer-events: none;
+  opacity: 1;
+  transition: opacity var(--preview-reveal-duration) linear;
+}
+@media (hover: hover) {
+  .project-card:hover .preview-dither { opacity: 0; }
+}
+.project-card:focus-visible .preview-dither { opacity: 0; }
+/* Dialog reveals inherit the thumbnail's progress through the animation API. */
+.dialog-preview .preview-dither { opacity: 0; transition: none; }
+@media (prefers-reduced-motion: reduce) {
+  .preview-dither { transition: none; }
+}
+.preview-video-surface {
+  position: absolute;
+  inset: 0;
+  z-index: 1;
+  pointer-events: none;
+  background: inherit;
+  opacity: 0;
+}
+.preview-video-surface.is-ready { opacity: 1; }
+.preview-video-surface video, .preview-video-dither {
+  display: block;
+  width: 100%;
+  height: 100%;
+  object-fit: var(--preview-object-fit, contain);
+}
+.preview-video-dither { position: absolute; inset: 0; }
+.project-media .project-badge { z-index: 2; }

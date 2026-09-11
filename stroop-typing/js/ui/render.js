@@ -36,8 +36,8 @@ export function setRoundState(elements, state) {
 }
 
 export function flashStimulus(stimulusEl) {
-  stimulusEl.classList.remove("quick-fade-in");
-  requestAnimationFrame(() => stimulusEl.classList.add("quick-fade-in"));
+  stimulusEl.classList.remove("stimulus-enter");
+  requestAnimationFrame(() => stimulusEl.classList.add("stimulus-enter"));
 }
 
 export function renderPrompt(stimulusEl, prompt) {

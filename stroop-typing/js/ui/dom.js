@@ -15,6 +15,7 @@ export function getElements() {
     helpDialog: document.getElementById("helpDialog"),
     closeHelp: document.getElementById("closeHelp"),
     practiceAgain: document.getElementById("practiceAgain"),
+    helpExample: document.querySelector(".exampleWord"),
     timeLeft: document.getElementById("timeLeft"),
     wpm: document.getElementById("wpm"),
     modeCongruent: document.getElementById("modeCongruent"),

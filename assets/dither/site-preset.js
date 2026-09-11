@@ -1,7 +1,7 @@
 // Shared by every project thumbnail and dialog image, including future ones.
 export const SITE_DITHER_PRESET = Object.freeze({
   algorithm: "ordered",
-  grain: 1,
+  grain: 2,
   strength: 100,
   color: 15,
   contrast: 100,

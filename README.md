@@ -86,6 +86,34 @@ opening a dialog or clicking its preview never requests or downloads the PDF.
 Only **Download** requests the document, saving it as `JY-Resume.pdf` or
 `JY-CV.pdf`. Menu image paths and download settings live in `menu.js`.
 
+### MP4 project overviews
+
+Each of the eleven project cards is wired to `overview.mp4` in its own folder,
+for example `stroop-typing/overview.mp4` or `woo-display/overview.mp4`. Add the
+actual overview recordings at those paths. Override
+the path with the card's `data-video` attribute in `index.html`, or remove the
+attribute to disable video for that project. Use browser-compatible H.264 MP4
+files on this site (cross-origin files need permission for canvas capture).
+
+Video downloads, first-frame decoding, and preview dithering start as soon as
+the page initializes, including projects on later pages. Each available clip
+starts as a fully dithered still; pointer hover or keyboard focus immediately
+starts its muted, inline loop. Opening the overview moves
+the same player into the dialog, continuing from its current position. Leaving
+the card or closing the dialog pauses at the current frame and gradually
+reapplies the shared dither and color wash to that frame. The next interaction
+resumes from that position. Closing a dialog returns its latest frame to the
+card, even if the clip was started only inside the dialog.
+
+Players use `preload="auto"` and prepare their first frame without playing;
+browser data-saving policies may still defer downloads. A missing or unplayable
+clip keeps the static preview. Touch devices play when the overview opens. Reduced-motion mode skips
+hover playback and fades; opening a dialog explicitly still plays its clip.
+Hidden cards and background tabs pause their players. Positions and frames are
+kept for the current page session, not across reloads. Only paused frames are
+filtered in the worker, capped at 1280 pixels along the longest edge; normal
+video playback does not require continuous canvas processing.
+
 ## Homepage behavior
 
 ### Temporary dither lab
@@ -109,12 +137,18 @@ To remove the experiment, delete `dither-lab/` and its marked link in
 
 Project thumbnail images and images in the detail dialogs automatically use
 the shared preset in `assets/dither/site-preset.js`: ordered newspaper screen,
-1 source-pixel grain, 100% dither strength, 15% color wash, 100% contrast,
+2 source-pixel grain, 100% dither strength, 15% color wash, 100% contrast,
 brightness +1, and two ink tones (black and white).
 
 Add images inside `.project-media` or `.dialog-preview` as usual; no per-image
 filter class or generated asset is needed. Newly inserted images, source
 changes, cloned dialog previews, and responsive sizes are handled automatically.
+Dialog artwork is also fetched, decoded, and filtered at startup, so opening
+an overview can reuse its prepared master immediately. An early document-head
+guard keeps source images hidden until the matching dither canvas is painted,
+including on a cold load or when cached images arrive before the scripts.
+If filtering or its module fails, the original image remains the fallback;
+images also stay visible when JavaScript is disabled.
 Use local preview assets or images served with appropriate CORS permission;
 an unreadable image falls back to the original.
 
@@ -124,6 +158,10 @@ The original `<img>` supplies accessible text and layout. Text placeholders,
 navigation icons, and the already-dithered sidebar mascot keep their existing
 appearance. Production filtering lives in `assets/dither/` and continues to
 work if the temporary lab is removed.
+
+Hover and keyboard focus reveal original colors over 1.5 seconds. Opening a
+dialog continues the reveal from the thumbnail's current progress; leaving
+restores the filtering. Reduced-motion mode makes these changes immediate.
 
 ### Menu controls
 

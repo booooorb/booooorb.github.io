@@ -371,6 +371,7 @@ export function createGameController(elements, arena, sound) {
   }
 
   function init() {
+    elements.helpExample.style.color = COLORS.find((color) => color.name === "green").hex;
     sound.arm();
     resetHud(elements);
     renderMode(elements, state.mode);
