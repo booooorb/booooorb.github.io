@@ -185,6 +185,15 @@ on compact/portrait layouts, pauses in hidden tabs, and shows a static
 “still walking...” when reduced motion is requested. Edit `mouseThoughts` in
 `menu.js` to change the phrases.
 
+Below Contact, desktop layouts (wider than 700px) show a monochrome logo carousel
+adapted from the supplied React Bits LogoLoop. Its markup is in `index.html`,
+styles are in `style.css`, and `assets/menu/logo-loop.js` handles the seamless
+loop and smooth hover pause. Change `data-speed` to adjust pixels per second.
+The four example technology logos are placeholders: their links have no `href`
+and are marked `aria-disabled`. Add destinations and remove `aria-disabled`
+when ready. The carousel is hidden on mobile, stops in hidden tabs, and displays
+a single static row when reduced motion is requested.
+
 To fill a placeholder, edit its card in `index.html`: update the title, image,
 metadata, and `data-*` search/filter attributes; change `data-status` to
 `available`; and replace the outer `button` with an `a` with the project's real
