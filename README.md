@@ -105,6 +105,13 @@ reapplies the shared dither and color wash to that frame. The next interaction
 resumes from that position. Closing a dialog returns its latest frame to the
 card, even if the clip was started only inside the dialog.
 
+Horizontal overviews fill the card and dialog frames, cropping the edges as
+needed. Vertical and square overviews remain fully visible. The fit follows
+the video's own dimensions and applies to both playback and dithered stills.
+WooDisplay adds a 1.2× zoom to crop the black padding inside its recording.
+Set a card's `data-video-zoom` to adjust this extra zoom for horizontal clips;
+vertical and square clips always keep their original framing.
+
 Players use `preload="auto"` and prepare their first frame without playing;
 browser data-saving policies may still defer downloads. A missing or unplayable
 clip keeps the static preview. Touch devices play when the overview opens. Reduced-motion mode skips

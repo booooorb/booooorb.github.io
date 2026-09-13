@@ -28,7 +28,8 @@ export function installVideoPreviews(dither) {
     const fit = getComputedStyle(state.video).objectFit;
     const scaleX = surface.clientWidth / master.width;
     const scaleY = surface.clientHeight / master.height;
-    const scale = fit === "cover" ? Math.max(scaleX, scaleY) : Math.min(scaleX, scaleY);
+    const zoom = Number(surface.style.getPropertyValue("--preview-zoom")) || 1;
+    const scale = (fit === "cover" ? Math.max(scaleX, scaleY) : Math.min(scaleX, scaleY)) * zoom;
     const ratio = devicePixelRatio || 1;
     const width = Math.max(1, Math.min(master.width, Math.round(master.width * scale * ratio)));
     const height = Math.max(1, Math.min(master.height, Math.round(master.height * scale * ratio)));
@@ -40,6 +41,17 @@ export function installVideoPreviews(dither) {
       state.paintedMaster = master;
     }
     if (state.ready) surface.classList.add("is-ready");
+  }
+
+  function fitPreview(state) {
+    const { video, surface } = state;
+    // Fill the frame for landscape clips; preserve the full portrait/square image.
+    const landscape = video.videoWidth > video.videoHeight;
+    const fit = landscape ? "cover" : "contain";
+    const zoom = landscape ? Math.max(1, Number(state.card.dataset.videoZoom) || 1) : 1;
+    surface.style.setProperty("--preview-object-fit", fit);
+    surface.style.setProperty("--preview-zoom", String(zoom));
+    renderFrame(state);
   }
 
   const resizeObserver = new ResizeObserver((entries) => {
@@ -95,6 +107,7 @@ export function installVideoPreviews(dither) {
     Object.assign(state, { surface, video, canvas });
     surfaces.set(surface, state);
     resizeObserver.observe(surface);
+    video.addEventListener("loadedmetadata", () => fitPreview(state));
     video.addEventListener("loadeddata", () => {
       if (!state.ready) prepareFrame(state);
     });
@@ -118,11 +131,8 @@ export function installVideoPreviews(dither) {
   function attach(state, host) {
     if (!state.video) createPlayer(state);
     if (state.failed) return;
-    const image = host.querySelector("img");
-    const fit = image ? getComputedStyle(image).objectFit : "contain";
-    state.surface.style.setProperty("--preview-object-fit", fit);
     host.append(state.surface);
-    renderFrame(state);
+    fitPreview(state);
   }
 
   function play(state) {
