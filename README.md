@@ -40,8 +40,8 @@ Use the close button, Escape, or the backdrop to return to the menu.
 The three hosted games have a **Play** button. Repository projects, including
 GFFootball for now, have a **View GitHub repo** button. VeryShop has a **Visit
 website** button linking to `https://veryshop.ca/`. The Github menu item opens a
-preview first, with a button to visit the profile. About and Ideas have no
-external action.
+preview first, with a button to visit the profile. About and CV open empty
+dialogs with only their title and close button. Ideas has no external action.
 
 ### Editing descriptions
 
@@ -56,8 +56,9 @@ edited files as usual to update the live site.
   `dlc-gait-assembler/description.md`,
   `myoassist-lumbar-flexion-model/description.md`, `sbl-annotator/description.md`,
   `field-activity-detector/description.md`, `veryshop/description.md`.
-- Menu: `about/description.md`, `resume/description.md`,
-  `github/description.md`, `cv/description.md`.
+- Menu: `resume/description.md`, `github/description.md`. About and CV have
+  empty description files; add their `descriptionSrc` in `menu.js` to enable
+  content when ready.
 - Placeholder: `ideas/description.md`.
 
 Supported Markdown: paragraphs separated by blank lines, headings, **bold**,
@@ -70,21 +71,21 @@ is no need to repeat the title in the description.
 
 Games reuse their card images. Other projects have a replaceable `preview.svg`
 in their folder; set `data-preview` on the card to use another image. The Github
-preview is `github/preview.svg`; About uses `assets/menu/rat.webp`.
+preview is `github/preview.svg`. About and CV have no preview.
 
-Resume and CV contain clearly labeled placeholder PDFs and previews:
+Resume contains Jeffrey Yang's actual resume and a preview rendered from it:
 
 | Item | Download file | Preview image |
 | --- | --- | --- |
 | Resume | `resume/resume.pdf` | `resume/preview.png` |
-| CV | `cv/cv.pdf` | `cv/preview.png` |
 
-Replace each PDF and its preview image when the real document is ready, and
-update the corresponding `description.md`. Keep these paths to avoid code
-changes. The previews are static images without links or embedded PDF viewers:
+Replace the resume PDF and regenerate its preview image when the document
+changes. Keep these paths to avoid code changes. The preview is a static image
+without links or an embedded PDF viewer:
 opening a dialog or clicking its preview never requests or downloads the PDF.
-Only **Download** requests the document, saving it as `JY-Resume.pdf` or
-`JY-CV.pdf`. Menu image paths and download settings live in `menu.js`.
+Only **Download** requests the document, saving it as `jeffrey_yang_resume.pdf`.
+Menu image paths and download settings live in `menu.js`. CV has no document
+or download action in the menu.
 
 ### MP4 project overviews
 
@@ -125,7 +126,8 @@ video playback does not require continuous canvas processing.
 
 ### Temporary dither lab
 
-The **Dither lab** link next to **CV** opens `dither-lab/`. It shows six
+The dither lab is hidden from the homepage navigation and remains available
+directly at `dither-lab/`. It shows six
 Desktop Goose print presets: two grayscale dithers, then 12%, 24%, 38%, and
 55% color washes. Select a print to adjust its grain, dither strength, color,
 contrast, brightness, pattern, and ink tones. **Show original** compares the
@@ -137,8 +139,8 @@ downscaling to avoid moiré; PNG downloads use the full-resolution master.
 Adjustments are saved locally and separately for each preset; **Reset this
 preset** restores its starting settings. Lab adjustments do not change the
 shared homepage preset.
-To remove the experiment, delete `dither-lab/` and its marked link in
-`index.html`. No build step, packages, or external services are needed.
+To remove the experiment, delete `dither-lab/`. No build step, packages, or
+external services are needed.
 
 ### Automatic preview dithering
 

@@ -354,10 +354,12 @@
         action.rel = "noopener noreferrer";
       }
     }
-    description.textContent = "Loading description…";
-    description.setAttribute("aria-busy", "true");
+    description.hidden = !descriptionSrc;
+    description.textContent = descriptionSrc ? "Loading description…" : "";
+    description.setAttribute("aria-busy", String(Boolean(descriptionSrc)));
     if (!dialog.open) dialog.showModal();
     dialog.scrollTop = 0;
+    if (!descriptionSrc) return;
     try {
       const response = await fetch(descriptionSrc, { signal: request.signal, cache: "no-store" });
       if (!response.ok) throw new Error(`Description returned ${response.status}`);
@@ -409,19 +411,16 @@
   const info = {
     about: {
       title: "About",
-      descriptionSrc: "about/description.md",
-      image: "assets/menu/rat.webp",
-      imageAlt: "White halftone mouse on a black background",
     },
     resume: {
       title: "Resume",
       descriptionSrc: "resume/description.md",
       image: "resume/preview.png",
-      imageAlt: "Resume document preview — placeholder",
+      imageAlt: "Jeffrey Yang's resume",
       documentPreview: true,
       link: "resume/resume.pdf",
       linkText: "Download",
-      download: "JY-Resume.pdf",
+      download: "jeffrey_yang_resume.pdf",
     },
     github: {
       title: "Github",
@@ -434,17 +433,10 @@
     },
     cv: {
       title: "CV",
-      descriptionSrc: "cv/description.md",
-      image: "cv/preview.png",
-      imageAlt: "CV document preview — placeholder",
-      documentPreview: true,
-      link: "cv/cv.pdf",
-      linkText: "Download",
-      download: "JY-CV.pdf",
     },
   };
   document.querySelectorAll("[data-info]").forEach((button) => {
-    button.dataset.preview = info[button.dataset.info].image;
+    if (info[button.dataset.info].image) button.dataset.preview = info[button.dataset.info].image;
     button.setAttribute("aria-haspopup", "dialog");
     button.setAttribute("aria-controls", "info-dialog");
     button.addEventListener("click", () => showDialog({ ...info[button.dataset.info], eyebrow: "MENU" }));
